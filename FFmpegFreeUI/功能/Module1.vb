@@ -13,7 +13,6 @@ Module Module1
     Public Sound_Finish As Stream = My.Resources.Resource1.完成
     Public Sound_Error As Stream = My.Resources.Resource1.错误
     Public SP_UnLock As Boolean = False
-    Public UpdateAvailable As Boolean = False
     Private ReadOnly LoadedImageStreams As New ConditionalWeakTable(Of Image, Stream)()
 
     <DllImport("user32.dll")>

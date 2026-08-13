@@ -37,9 +37,6 @@ Partial Class Form_v6_起始页面
         即将推出2 = New LakeUI.ModernButton()
         即将推出1 = New LakeUI.ModernButton()
         HtmlColorLabel5 = New LakeUI.HtmlColorLabel()
-        MB_更新器更新 = New LakeUI.ModernButton()
-        MB_软件本体更新 = New LakeUI.ModernButton()
-        HtmlColorLabel4 = New LakeUI.HtmlColorLabel()
         JustEmptyControl3 = New LakeUI.JustEmptyControl()
         MP_新闻列表 = New LakeUI.ModernPanel()
         HtmlColorLabel6 = New LakeUI.HtmlColorLabel()
@@ -195,9 +192,6 @@ Partial Class Form_v6_起始页面
         ModernPanel5.Controls.Add(即将推出2)
         ModernPanel5.Controls.Add(即将推出1)
         ModernPanel5.Controls.Add(HtmlColorLabel5)
-        ModernPanel5.Controls.Add(MB_更新器更新)
-        ModernPanel5.Controls.Add(MB_软件本体更新)
-        ModernPanel5.Controls.Add(HtmlColorLabel4)
         ModernPanel5.Dock = DockStyle.Fill
         ModernPanel5.Location = New Point(330, 130)
         ModernPanel5.Name = "ModernPanel5"
@@ -311,59 +305,6 @@ Partial Class Form_v6_起始页面
         HtmlColorLabel5.TabIndex = 3
         HtmlColorLabel5.Text = "即将推出"
         HtmlColorLabel5.TextAlign = LakeUI.HtmlColorLabel.TextAlignEnum.Center
-        ' 
-        ' MB_更新器更新
-        ' 
-        MB_更新器更新.AnimationDuration = 0
-        MB_更新器更新.BackColor1 = Color.Transparent
-        MB_更新器更新.BorderRadius = 10
-        MB_更新器更新.BorderSize = 0
-        MB_更新器更新.Dock = DockStyle.Top
-        MB_更新器更新.HoverBackColor1 = Color.FromArgb(CByte(40), CByte(220), CByte(220), CByte(220))
-        MB_更新器更新.Location = New Point(20, 101)
-        MB_更新器更新.Margin = New Padding(2)
-        MB_更新器更新.Name = "MB_更新器更新"
-        MB_更新器更新.PressedBackColor1 = Color.FromArgb(CByte(60), CByte(220), CByte(220), CByte(220))
-        MB_更新器更新.Size = New Size(264, 50)
-        MB_更新器更新.SubText = "体积/版本/下载速度/百分比"
-        MB_更新器更新.SubTextForeColor = Color.CornflowerBlue
-        MB_更新器更新.TabIndex = 21
-        MB_更新器更新.Text = "控制台更新程序 0.0.1"
-        MB_更新器更新.TextAlign = LakeUI.ModernButton.TextAlignEnum.Left
-        ' 
-        ' MB_软件本体更新
-        ' 
-        MB_软件本体更新.AnimationDuration = 0
-        MB_软件本体更新.BackColor1 = Color.Transparent
-        MB_软件本体更新.BorderRadius = 10
-        MB_软件本体更新.BorderSize = 0
-        MB_软件本体更新.Dock = DockStyle.Top
-        MB_软件本体更新.HoverBackColor1 = Color.FromArgb(CByte(40), CByte(220), CByte(220), CByte(220))
-        MB_软件本体更新.Location = New Point(20, 51)
-        MB_软件本体更新.Margin = New Padding(2)
-        MB_软件本体更新.Name = "MB_软件本体更新"
-        MB_软件本体更新.PressedBackColor1 = Color.FromArgb(CByte(60), CByte(220), CByte(220), CByte(220))
-        MB_软件本体更新.Size = New Size(264, 50)
-        MB_软件本体更新.SubText = "体积/版本/下载速度/百分比"
-        MB_软件本体更新.SubTextForeColor = Color.YellowGreen
-        MB_软件本体更新.TabIndex = 20
-        MB_软件本体更新.Text = "[更新来源] 云端版本 6.0.0"
-        MB_软件本体更新.TextAlign = LakeUI.ModernButton.TextAlignEnum.Left
-        ' 
-        ' HtmlColorLabel4
-        ' 
-        HtmlColorLabel4.AutoSize = True
-        HtmlColorLabel4.AutoSizeMode = AutoSizeMode.GrowAndShrink
-        HtmlColorLabel4.Dock = DockStyle.Top
-        HtmlColorLabel4.Font = New Font("Microsoft YaHei UI", 12F)
-        HtmlColorLabel4.Location = New Point(20, 20)
-        HtmlColorLabel4.Margin = New Padding(2)
-        HtmlColorLabel4.Name = "HtmlColorLabel4"
-        HtmlColorLabel4.Padding = New Padding(0, 0, 0, 10)
-        HtmlColorLabel4.Size = New Size(264, 31)
-        HtmlColorLabel4.TabIndex = 1
-        HtmlColorLabel4.Text = "软件更新"
-        HtmlColorLabel4.TextAlign = LakeUI.HtmlColorLabel.TextAlignEnum.Center
         ' 
         ' JustEmptyControl3
         ' 
@@ -662,14 +603,11 @@ Partial Class Form_v6_起始页面
     Friend WithEvents ModernButton8 As LakeUI.ModernButton
     Friend WithEvents MB_官网 As LakeUI.ModernButton
     Friend WithEvents MB_终末诗 As LakeUI.ModernButton
-    Friend WithEvents HtmlColorLabel4 As LakeUI.HtmlColorLabel
     Friend WithEvents HtmlColorLabel5 As LakeUI.HtmlColorLabel
     Friend WithEvents HtmlColorLabel6 As LakeUI.HtmlColorLabel
     Friend WithEvents MB_LakeUI As LakeUI.ModernButton
-    Friend WithEvents MB_软件本体更新 As LakeUI.ModernButton
     Friend WithEvents 即将推出2 As LakeUI.ModernButton
     Friend WithEvents 即将推出1 As LakeUI.ModernButton
-    Friend WithEvents MB_更新器更新 As LakeUI.ModernButton
     Friend WithEvents MB_FFmpegFull As LakeUI.ModernButton
     Friend WithEvents MB_关于3F项目 As LakeUI.ModernButton
     Friend WithEvents MB_3FR单源录制器 As LakeUI.ModernButton

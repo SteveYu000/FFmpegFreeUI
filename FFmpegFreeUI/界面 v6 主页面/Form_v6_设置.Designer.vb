@@ -33,7 +33,6 @@ Partial Class Form_v6_设置
         Dim ModernTabPage9 As LakeUI.ModernTabListControl.ModernTabPage = New LakeUI.ModernTabListControl.ModernTabPage()
         Dim ModernTabPage10 As LakeUI.ModernTabListControl.ModernTabPage = New LakeUI.ModernTabListControl.ModernTabPage()
         Dim ModernTabPage11 As LakeUI.ModernTabListControl.ModernTabPage = New LakeUI.ModernTabListControl.ModernTabPage()
-        Dim ModernTabPage12 As LakeUI.ModernTabListControl.ModernTabPage = New LakeUI.ModernTabListControl.ModernTabPage()
         Dim ModernTabPage13 As LakeUI.ModernTabListControl.ModernTabPage = New LakeUI.ModernTabListControl.ModernTabPage()
         Dim ModernTabPage14 As LakeUI.ModernTabListControl.ModernTabPage = New LakeUI.ModernTabListControl.ModernTabPage()
         Dim ModernTabPage15 As LakeUI.ModernTabListControl.ModernTabPage = New LakeUI.ModernTabListControl.ModernTabPage()
@@ -60,7 +59,6 @@ Partial Class Form_v6_设置
         ModernTabPage9.Text = "性能调度"
         ModernTabPage10.Text = "功能设定"
         ModernTabPage11.Text = "转译辅助"
-        ModernTabPage12.Text = "更新选项"
         ModernTabPage13.Text = "远程调用"
         ModernTabPage14.Text = "Agent 设置"
         ModernTabPage15.IsSeparator = True
@@ -78,7 +76,6 @@ Partial Class Form_v6_设置
         ModernTabListControl1.Items.Add(ModernTabPage9)
         ModernTabListControl1.Items.Add(ModernTabPage10)
         ModernTabListControl1.Items.Add(ModernTabPage11)
-        ModernTabListControl1.Items.Add(ModernTabPage12)
         ModernTabListControl1.Items.Add(ModernTabPage13)
         ModernTabListControl1.Items.Add(ModernTabPage14)
         ModernTabListControl1.Items.Add(ModernTabPage15)

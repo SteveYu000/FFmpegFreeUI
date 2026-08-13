@@ -59,7 +59,6 @@ Public Class 字体控制
         SetControlFont(设置_v6.实例对象.字体, Form_v6_设置_界面显示, {Form_v6_设置_界面显示.MCB_全局字体}, True)
         SetControlFont(设置_v6.实例对象.字体, Form_v6_设置_功能设定, , True)
         SetControlFont(设置_v6.实例对象.字体, Form_v6_设置_性能调度, , True)
-        SetControlFont(设置_v6.实例对象.字体, Form_v6_设置_更新选项, , True)
         SetControlFont(设置_v6.实例对象.字体, Form_v6_设置_转译辅助, , True)
         SetControlFont(设置_v6.实例对象.字体, Form_v6_设置_远程调用, , True)
         SetControlFont(设置_v6.实例对象.字体, Form_v6_设置_Agent, , True)

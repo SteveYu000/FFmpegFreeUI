@@ -1,5 +1,4 @@
 Imports System.ComponentModel
-Imports System.IO
 Imports System.Reflection
 Imports LakeUI
 
@@ -7,7 +6,6 @@ Public Class FormMain_v6
     Private ReadOnly 插件选项卡页 As New Dictionary(Of String, ModernTabListControl.ModernTabPage)(StringComparer.CurrentCultureIgnoreCase)
     Private 退出确认已完成 As Boolean = False
     Private 退出时清除所有任务 As Boolean = True
-    Private 退出时启动更新器 As Boolean = False
     Private 退出里程碑检查进行中 As Boolean = False
     Private 退出里程碑检查已完成 As Boolean = False
 
@@ -88,18 +86,6 @@ Public Class FormMain_v6
         Application.DoEvents()
         启动参数响应_v6.处理首次启动参数()
 
-        If Not 设置_v6.实例对象.是否询问标记_下载服务器选择 Then
-            If Globalization.RegionInfo.CurrentRegion.EnglishName.ToLower.Trim.Contains("china") Then
-                If ExOverlayMsgBox(Me, $"{vbCrLf}检测到当前系统区域为国内，是否选择使用国内镜像站作为下载更新服务器？详细信息可前往设置查看。", MsgBoxStyle.YesNo, "建议国内用户使用镜像服务器") = MsgBoxResult.Yes Then
-                    设置_v6.实例对象.更新服务器选择 = 2
-                    Form_v6_设置_更新选项.MCB_更新服务器.SelectedIndex = 设置_v6.实例对象.更新服务器选择
-                End If
-                设置_v6.实例对象.是否询问标记_下载服务器选择 = True
-            End If
-        End If
-
-        网络功能.检查软件本体更新()
-        网络功能.检查更新器更新()
         网络功能.获取新闻列表()
 
         If 设置_v6.实例对象.启用性能计数器 = 0 Then
@@ -214,16 +200,7 @@ Public Class FormMain_v6
     <CodeAnalysis.SuppressMessage("Performance", "CA1861:不要将常量数组作为参数", Justification:="<挂起>")>
     Private Async Sub FormMain_v6_Closing(sender As Object, e As CancelEventArgs) Handles Me.FormClosing
         e.Cancel = False
-        Dim updaterPath = Path.Combine(Application.StartupPath, "Updater.exe")
         If Not 退出确认已完成 Then
-            退出时启动更新器 = UpdateAvailable AndAlso FileIO.FileSystem.FileExists(updaterPath)
-            If UpdateAvailable AndAlso Not 退出时启动更新器 Then
-                If ExOverlayMsgBox(Me, "程序目录下没有更新器，这是意外情况，仍旧退出？", MsgBoxStyle.YesNo) <> MsgBoxResult.Yes Then
-                    e.Cancel = True
-                    Exit Sub
-                End If
-            End If
-
             Dim 进行中任务数量 = 编码队列_v6.获取进行中任务数量()
             Dim 未处理任务数量 = 编码队列_v6.获取未处理任务数量()
             退出时清除所有任务 = True
@@ -280,9 +257,6 @@ Public Class FormMain_v6
         If 退出时清除所有任务 AndAlso 编码队列_v6.获取进行中任务数量() > 0 Then 编码队列_v6.停止所有进行中任务()
         端口监听_v6.停止客户端()
         设置_v6.退出时保存设置()
-        If 退出时启动更新器 Then
-            Process.Start(updaterPath)
-        End If
         If Form_v6_调试播放器.ffplayHandle <> IntPtr.Zero Then Form_v6_调试播放器.停止()
     End Sub
 

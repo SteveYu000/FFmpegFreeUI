@@ -49,13 +49,6 @@ Public Class 设置_v6
     Public Property 覆盖参数传递 As String = ""
     Public Property 转译模式 As Boolean = False
 
-    ''' <summary>
-    ''' 0=github;1=gh-proxy.com;3=FrostLynx;4=MirrorChyan
-    ''' </summary>
-    ''' <returns></returns>
-    Public Property 更新服务器选择 As Integer = 0
-    Public Property MirrorChyanCDK As String = ""
-
     Public Property 用户统计_成功编码任务数 As Long = 0
     Public Property 用户统计_任务执行总时长Ticks As Long = 0
     Public Property 用户统计_首次成功提示已显示 As Boolean = False
@@ -109,7 +102,6 @@ Public Class 设置_v6
     Public Property SP_毛玻璃背景来源 As Integer = -1
     Public Property SP_毛玻璃噪点颗粒 As Integer = -1
 
-    Public Property 是否询问标记_下载服务器选择 As Boolean = False
     Public Property 自定义视频编码器列表 As New List(Of String)
 
     Private Shared ReadOnly 设置文件路径 As String = Path.Combine(Application.StartupPath, "Settings.json")
@@ -193,13 +185,6 @@ Public Class 设置_v6
         Form_v6_设置_转译辅助.MCB_替代进程的文件名.Text = 实例对象.替代进程文件名
         Form_v6_设置_转译辅助.MTB_覆盖参数传递.Text = 实例对象.覆盖参数传递
         Form_v6_设置_转译辅助.MCB_转译模式.Checked = 实例对象.转译模式
-
-        If 实例对象.MirrorChyanCDK <> "" Then
-            Form_v6_设置_更新选项.MCB_更新服务器.Items(3) = "Mirror酱 付费 CDN"
-            Form_v6_设置_更新选项.HtmlColorLabel4.Visible = True
-            Form_v6_设置_更新选项.HtmlColorLabel5.Visible = False
-        End If
-        Form_v6_设置_更新选项.MCB_更新服务器.SelectedIndex = 实例对象.更新服务器选择
 
         Form_v6_设置_远程调用.BooleanSwitch1.Checked = 实例对象.是否监听端口
         Form_v6_设置_远程调用.ModernTextBox1.Text = 实例对象.监听的端口
