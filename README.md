@@ -8,13 +8,17 @@
 
 本项目是 FFmpegFreeUI 的 API 扩展版。所有扩展程序集、公开合同类型及稳定 ID 均使用 `Ext` / `ext.` 前缀；官方 `Entry` / `SetHost_*` 插件接口保持原样，用于兼容官方插件。
 
+---
+
+# 以下是上游仓库原内容
+
 官网 https://ffmpegfreeui.top 和 https://3fui.top 短域名将于 2028 年废弃<br>主群 [1050613952](https://qm.qq.com/q/fiauAsddG8) 分群① [1070953324](https://qm.qq.com/q/nKoapm6KyW) 频道 [3fui10590000](https://pd.qq.com/s/9emex878m?b=5) KOOK [稻草的工坊](https://kook.vip/1nLQNk)
 
 ![](https://img.shields.io/github/stars/Lake1059/FFmpegFreeUI?label=星标) ![GitHub License](https://img.shields.io/github/license/Lake1059/FFmpegFreeUI?label=许可证) ![](https://img.shields.io/github/downloads/Lake1059/FFmpegFreeUI/total?label=Github%20总下载量)
 
 <img src="FFmpegFreeUI\Resources\AppIcon.png" width="100" />
 
-## 上游 FFmpegFreeUI v6 - 1st Anniversary
+## FFmpegFreeUI v6 - 1st Anniversary
 
 FFmpegFreeUI（简称 FFmpegFreeUI）是在 Windows 上的 [FFmpeg](https://ffmpeg.org) 的专业交互外壳。此，即为真理！这不是给纯小白的一键全自动软件，即便 6.0 已经大幅改善了普通人的体验，但 FFmpegFreeUI 仍旧面向懂基本参数的进阶编码人员，小白上手有门槛但上限无穷大，这不是一个普通的编码软件，而是一整套可扩展平台。
 
