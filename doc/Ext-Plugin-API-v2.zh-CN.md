@@ -19,7 +19,7 @@ Ext Plugin API v2 仍处于实验阶段。公开的锚点 ID、阶段 ID 和合�
 - 命名空间：`FFmpegFreeUI.Ext.PluginSdk`；
 - 公开合同类型：统一以 `Ext` 开头，例如 `IExtFFmpegFreeUIPlugin`、`ExtPluginPipelineContext`；
 - 稳定锚点、选项、行为、资源和阶段 ID：统一以 `ext.` 开头，例如 `ext.task.before-prepare`；
-- 官方兼容 API：`Entry`、`SetHost_*` 以及官方队列事件名保持原样，继续走独立的官方兼容加载路径。
+- 官方兼容 API：`Entry`、`SetHost_*` 以及官方队列事件名保持原样；同一插件程序集可以同时提供官方入口和 Ext 入口，两个入口按各自规则加载。
 
 早期使用 `FFmpegFreeUI.PluginSdk.dll` 和无 `Ext` 前缀类型编译的扩展插件必须重新引用新 SDK 并重新编译。本项目不部署旧名称兼容垫片，因为保留旧程序集身份会重新引入未来命名冲突。
 
@@ -53,7 +53,7 @@ Plugin\
 - 根目录缺少 `FFmpegFreeUI.Ext.PluginSdk.dll` 时，Ext Plugin API v2 会安全禁用。依赖 SDK 的插件会在程序集加载之前被静默跳过，FFmpegFreeUI 本体仍可运行。
 - 根目录缺少 `FFmpegFreeUI.Ext.PluginHost.dll`、版本不兼容或初始化失败时，v2 同样安全禁用。
 - 当前桥接层要求 SDK 和 PluginHost 都是 `2.2.0` 或更高的 `2.x` 版本，并要求二者主、次版本一致；例如 `2.2.x` SDK 必须搭配 `2.2.x` Host。
-- 原有 `Entry` / `SetHost_*` 插件仍走旧加载逻辑，但不能使用本指南中的 UI 锚点和处理阶段。
+- 只提供 `Entry` / `SetHost_*` 的插件仍走官方兼容逻辑；需要补充能力时，可以在同一程序集内再实现 `IExtFFmpegFreeUIPlugin`，无需放弃官方接口。
 
 ### 为什么同时需要 PluginSdk 和 PluginHost
 
@@ -156,7 +156,30 @@ FFmpegFreeUI 会在每个 `*.3fui.dll` 中查找实现 `IExtFFmpegFreeUIPlugin` 
 
 一个程序集可以包含多个入口，宿主按类型全名排序后初始化；为了发布和排错简单，通常一个程序集只提供一个入口。
 
-### 4.1 C# 入口
+### 4.1 官方接口优先与双入口插件
+
+Ext SDK 的定位是补充官方插件接口尚未提供的能力，而不是替代官方接口。官方接口已经提供的功能应继续使用官方方式，例如：
+
+- 使用 `SetHost_AddCustomWinformPanel` 或 `SetHost_AddCustomWpfPanel` 注册主窗口左侧入口和独立页面；
+- 使用官方入队、媒体流选择器和队列事件回调完成已有能力；
+- 只有原生 UI 锚点、预设扩展数据、有序处理链、取消令牌和资源冲突协调等官方接口没有提供的能力才使用 Ext SDK。
+
+同一个 `*.3fui.dll` 可以同时包含：
+
+1. 一个或多个 `IExtFFmpegFreeUIPlugin` 实现；
+2. 一个官方兼容 `Entry` 类及其 `SetHost_*` 方法。
+
+宿主按以下顺序加载双入口插件：
+
+1. 找到 `Entry` 类并注入全部可用的官方回调；
+2. 初始化 `IExtFFmpegFreeUIPlugin`，注册 Ext 扩展；
+3. 调用官方静态 `Entry()`，完成页面等官方能力注册。
+
+因此官方回调在 Ext `Initialize` 执行前已经可用；一般仍建议把官方注册集中放在 `Entry()` 中，把 Ext 注册集中放在 `Initialize()` 中，避免重复初始化。纯官方插件和纯 Ext 插件的行为保持不变。
+
+宿主首先按原有 `{AssemblyName}.Entry` 约定查找；若未找到，也接受程序集中唯一一个名称为 `Entry` 的非嵌套类型，以兼容程序集名称以 `.3fui` 结尾的 Ext 项目。存在多个候选 `Entry` 时会拒绝加载，插件应只保留一个官方入口。
+
+### 4.2 C# 入口
 
 ```csharp
 using FFmpegFreeUI.Ext.PluginSdk;
@@ -185,7 +208,7 @@ public sealed class MyPlugin : IExtFFmpegFreeUIPlugin
 }
 ```
 
-### 4.2 VB.NET 入口
+### 4.3 VB.NET 入口
 
 ```vb
 Imports FFmpegFreeUI.Ext.PluginSdk

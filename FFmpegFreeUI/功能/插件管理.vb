@@ -39,26 +39,31 @@ Public Class 插件管理
         If Not Ext插件扩展桥接_v2.可用 AndAlso 插件文件依赖ExtSDK(插件文件) Then Exit Sub
 
         Dim 程序集 = Assembly.LoadFrom(插件文件)
-        If Ext插件扩展桥接_v2.可用 AndAlso Ext插件扩展桥接_v2.尝试加载Ext插件(程序集) Then
-            Exit Sub
+        Dim Entry类 As Type = 查找官方Entry类(程序集)
+        Dim Entry类的实例 As Object = Nothing
+
+        ' 先注入官方兼容回调，使双入口插件在 Ext Initialize 中也能访问官方已提供的能力。
+        If Entry类 IsNot Nothing Then
+            If Entry类.GetConstructor(Type.EmptyTypes) IsNot Nothing Then Entry类的实例 = Activator.CreateInstance(Entry类)
+
+            注入宿主回调(Entry类, Entry类的实例, "SetHost_AddCustomWinformPanel", New Action(Of String, Control)(AddressOf 添加自定义Winform面板))
+            注入宿主回调(Entry类, Entry类的实例, "SetHost_AddCustomWpfPanel", New Action(Of String, System.Windows.UIElement)(AddressOf 添加自定义Wpf面板))
+            注入宿主回调(Entry类, Entry类的实例, "SetHost_AddMissionToQueueWithArgs", New Action(Of String, String, String, String)(AddressOf 使用命令行添加任务到编码队列))
+            注入宿主回调(Entry类, Entry类的实例, "SetHost_AddMissionToQueueWith3fuiFile", New Action(Of String, String, String, String)(AddressOf 使用预设文件添加任务到编码队列))
+            注入宿主回调(Entry类, Entry类的实例, "SetHost_MediaStreamVisualSelector", New Action(Of String, Object, Object, Object, String, String, String, String)(AddressOf 打开媒体流可视化选择器))
+            注入宿主回调(Entry类, Entry类的实例, "SetHost_SubscribeQueueEvents", New Action(Of String, Object)(AddressOf 注册编码队列事件))
         End If
 
-        Dim Entry类 As Type = 程序集.GetType(程序集.GetName.Name & ".Entry")
+        Dim 已加载Ext插件 As Boolean = False
+        If Ext插件扩展桥接_v2.可用 Then
+            已加载Ext插件 = Ext插件扩展桥接_v2.尝试加载Ext插件(程序集)
+        End If
 
         If Entry类 Is Nothing Then
+            If 已加载Ext插件 Then Exit Sub
             MsgBox($"{插件文件} 不包含 Entry 类，无法加载此插件", MsgBoxStyle.Critical)
             Exit Sub
         End If
-
-        Dim Entry类的实例 As Object = Nothing
-        If Entry类.GetConstructor(Type.EmptyTypes) IsNot Nothing Then Entry类的实例 = Activator.CreateInstance(Entry类)
-
-        注入宿主回调(Entry类, Entry类的实例, "SetHost_AddCustomWinformPanel", New Action(Of String, Control)(AddressOf 添加自定义Winform面板))
-        注入宿主回调(Entry类, Entry类的实例, "SetHost_AddCustomWpfPanel", New Action(Of String, System.Windows.UIElement)(AddressOf 添加自定义Wpf面板))
-        注入宿主回调(Entry类, Entry类的实例, "SetHost_AddMissionToQueueWithArgs", New Action(Of String, String, String, String)(AddressOf 使用命令行添加任务到编码队列))
-        注入宿主回调(Entry类, Entry类的实例, "SetHost_AddMissionToQueueWith3fuiFile", New Action(Of String, String, String, String)(AddressOf 使用预设文件添加任务到编码队列))
-        注入宿主回调(Entry类, Entry类的实例, "SetHost_MediaStreamVisualSelector", New Action(Of String, Object, Object, Object, String, String, String, String)(AddressOf 打开媒体流可视化选择器))
-        注入宿主回调(Entry类, Entry类的实例, "SetHost_SubscribeQueueEvents", New Action(Of String, Object)(AddressOf 注册编码队列事件))
 
         Dim Entry方法 As MethodInfo = Entry类.GetMethod("Entry", BindingFlags.Public Or BindingFlags.NonPublic Or BindingFlags.Static)
         If Entry方法 Is Nothing Then
@@ -67,6 +72,31 @@ Public Class 插件管理
         End If
         Entry方法.Invoke(Nothing, Nothing)
     End Sub
+
+    Private Shared Function 查找官方Entry类(程序集 As Assembly) As Type
+        Dim 约定类型名 = 程序集.GetName.Name & ".Entry"
+        Dim Entry类 = 程序集.GetType(约定类型名, throwOnError:=False, ignoreCase:=False)
+        If Entry类 IsNot Nothing Then Return Entry类
+
+        Dim 可加载类型 As IEnumerable(Of Type)
+        Try
+            可加载类型 = 程序集.GetTypes()
+        Catch ex As ReflectionTypeLoadException
+            可加载类型 = ex.Types.Where(Function(type) type IsNot Nothing).Cast(Of Type)()
+        End Try
+
+        Dim 候选类型 = 可加载类型.
+            Where(Function(type) Not type.IsNested AndAlso String.Equals(type.Name, "Entry", StringComparison.Ordinal)).
+            OrderBy(Function(type) type.FullName, StringComparer.Ordinal).
+            ToList()
+
+        If 候选类型.Count > 1 Then
+            Throw New InvalidOperationException(
+                $"程序集 {程序集.GetName.Name} 包含多个 Entry 类：{String.Join("、", 候选类型.Select(Function(type) type.FullName))}")
+        End If
+
+        Return 候选类型.FirstOrDefault()
+    End Function
 
     Private Shared Function 插件文件依赖ExtSDK(插件文件 As String) As Boolean
         Try

@@ -6,21 +6,45 @@
 
 版本规则：`v{官方版本号}-ext.{扩展修订号}+v{Ext API 主版本.次版本}`。
 
-本项目是 FFmpegFreeUI 的 API 扩展版。所有扩展程序集、公开合同类型及稳定 ID 均使用 `Ext` / `ext.` 前缀；官方 `Entry` / `SetHost_*` 插件接口保持原样，用于兼容官方插件。
+本项目是 FFmpegFreeUI 的 API 扩展版。所有扩展程序集、公开合同类型及稳定 ID 均使用 `Ext` / `ext.` 前缀；官方插件接口保持原样，用于兼容官方插件。
+
+## Ext Plugin API v2
+
+Ext Plugin API v2 补充官方插件 API 尚未提供的能力，主要包括：
+
+- 在宿主公开的稳定 UI 锚点插入输入框、下拉框、按钮或自定义控件；
+- 装饰公开的原生控件，并把插件状态随 v6 预设保存；
+- 在预设、队列、任务准备、命令构建、外部进程和任务终态阶段注册有序处理器；
+- 在异步任务阶段接收停止令牌，并向原生任务日志报告进度和结构化结果。
+
+### 与官方插件 API 的关系
+
+插件应优先使用官方 `Entry` / `SetHost_*` 接口完成官方已经支持的功能，例如添加独立页面、调用官方入队和订阅官方事件；只有在需要嵌入原生参数页、参与扩展处理链或取得任务取消令牌等官方接口无法提供的能力时，才使用 Ext Plugin API v2。
+
+同一个 `*.3fui.dll` 可以同时提供官方 `Entry` 和 `IExtFFmpegFreeUIPlugin`。宿主会先注入官方回调，再初始化 Ext 入口，最后执行官方 `Entry()`，因此插件可以同时使用两套接口。
+
+### 运行时组件
+
+Ext Plugin API v2 是可选组件。只有程序根目录同时存在 `FFmpegFreeUI.Ext.PluginHost.dll` 和 `FFmpegFreeUI.Ext.PluginSdk.dll` 时才会启用。缺少 SDK 时，FFmpegFreeUI 会在加载程序集前静默跳过依赖它的插件；主程序以及不依赖 SDK 的官方 `Entry` 插件仍可正常运行。
+
+### 开发文档与示例
+
+完整的接入方法、UI 锚点、处理阶段和可修改字段，请阅读 [Ext Plugin API v2 中文开发指南](doc/Ext-Plugin-API-v2.zh-CN.md)。
+
+仓库同时提供 [C# 全接口综合示例](Samples/FFmpegFreeUI.Ext.PluginApi.Sample) 和 [VB.NET 全接口综合示例](Samples/FFmpegFreeUI.Ext.PluginApi.VbVmafSample)。两个示例均覆盖全部公开 UI 锚点和处理阶段，分别以 SHA-256 与 VMAF 展示成功后处理。
 
 ---
 
 # 以下是上游仓库原内容
-
 官网 https://ffmpegfreeui.top 和 https://3fui.top 短域名将于 2028 年废弃<br>主群 [1050613952](https://qm.qq.com/q/fiauAsddG8) 分群① [1070953324](https://qm.qq.com/q/nKoapm6KyW) 频道 [3fui10590000](https://pd.qq.com/s/9emex878m?b=5) KOOK [稻草的工坊](https://kook.vip/1nLQNk)
 
 ![](https://img.shields.io/github/stars/Lake1059/FFmpegFreeUI?label=星标) ![GitHub License](https://img.shields.io/github/license/Lake1059/FFmpegFreeUI?label=许可证) ![](https://img.shields.io/github/downloads/Lake1059/FFmpegFreeUI/total?label=Github%20总下载量)
 
 <img src="FFmpegFreeUI\Resources\AppIcon.png" width="100" />
 
-## FFmpegFreeUI v6 - 1st Anniversary
+## FFmpegFreeUI v6 - 1st Anniversary！
 
-FFmpegFreeUI（简称 FFmpegFreeUI）是在 Windows 上的 [FFmpeg](https://ffmpeg.org) 的专业交互外壳。此，即为真理！这不是给纯小白的一键全自动软件，即便 6.0 已经大幅改善了普通人的体验，但 FFmpegFreeUI 仍旧面向懂基本参数的进阶编码人员，小白上手有门槛但上限无穷大，这不是一个普通的编码软件，而是一整套可扩展平台。
+FFmpegFreeUI（简称 3FUI）是在 Windows 上的 [FFmpeg](https://ffmpeg.org) 的专业交互外壳。此，即为真理！这不是给纯小白的一键全自动软件，即便 6.0 已经大幅改善了普通人的体验，但 3FUI 仍旧面向懂基本参数的进阶编码人员，小白上手有门槛但上限无穷大，这不是一个普通的编码软件，而是一整套可扩展平台。
 
 知乎终末诗的教程：https://zhuanlan.zhihu.com/p/1943079795341623993<br>
 v6 开发者官方宣传视频：https://www.bilibili.com/video/BV1rT7E6wEK4<br>
@@ -28,26 +52,25 @@ v6 开发者官方宣传视频：https://www.bilibili.com/video/BV1rT7E6wEK4<br>
 
 - 发布形式：所有数据存于当前目录的单文件
 - 系统要求：Windows 10 1609+ 仅限 x64 / arm64
-- 运行环境：.NET 10（不自带，需安装到系统）
-- 软件更新：启动时仅检查本仓库的 GitHub Release；发现新版本后由用户确认是否打开下载页面，不自动下载或安装
+- 运行环境：.NET 10（不自带，需安装到系统，可由更新器自动下载安装）
 - 基底框架：WinForms
 - 交互呈现：[LakeUI](https://github.com/Lake1059/LakeUI) 自主维护的基于 DirectX 的渲染引擎
 - 硬件要求：渲染器需要支持 D3D11 的显卡
 - 收费情况：所有生产力功能免费 + 个性化功能收费
 
-FFmpegFreeUI 是专为国内环境设计的，语言只有简体中文，不计划任何多语言功能，如有其他语言需求可自行开仓库维护所有字符串，并在 MIT 许可范围内行使所有权利。
+3FUI 是专为国内环境设计的，语言只有简体中文，不计划任何多语言功能，如有其他语言需求可自行开仓库维护所有字符串，并在 MIT 许可范围内行使所有权利。
 
 ### LakeUI 控件集
 
-FFmpegFreeUI 是 LakeUI 的招牌宣传作品，如果你也想在 WinForms 上制作这样的风格界面，欢迎试用 LakeUI，该产品像 .NET 原生控件一样简单易用，同时价格也非常亲民。也欢迎看看华丽的 [LakeUI 官网](https://lakeui.top/)。
+3FUI 是 LakeUI 的招牌宣传作品，如果你也想在 WinForms 上制作这样的风格界面，欢迎试用 LakeUI，该产品像 .NET 原生控件一样简单易用，同时价格也非常亲民。也欢迎看看华丽的 [LakeUI 官网](https://lakeui.top/)。
 
-### FFmpegFreeUI Agent 智能体
+### 3FUI Agent 智能体
 
-FFmpegFreeUI Agent 智能体现已可用！专属于 FFmpegFreeUI 的副驾驶！可接入任何兼容 OpenAI SDK 的端点来使用任何模型，其能力几乎相当于半个 Codex 或 CC，不仅可以控制整个参数面板和协助管理任务，还具备完整的联网能力、访问文件系统、读取文本文件和图片、使用 Windows PowerShell 终端。对话支持中途切换模型，数据完全存于本地，并与所有模型和端点共享。对话交互也同时具备主流 AI 软件的流式展现，支持基础 MarkDown 语法，同时占用极低，完全纯本地渲染，绝无半点 Web 套壳！
+3FUI Agent 智能体现已可用！专属于 3FUI 的副驾驶！可接入任何兼容 OpenAI SDK 的端点来使用任何模型，其能力几乎相当于半个 Codex 或 CC，不仅可以控制整个参数面板和协助管理任务，还具备完整的联网能力、访问文件系统、读取文本文件和图片、使用 Windows PowerShell 终端。对话支持中途切换模型，数据完全存于本地，并与所有模型和端点共享。对话交互也同时具备主流 AI 软件的流式展现，支持基础 MarkDown 语法，同时占用极低，完全纯本地渲染，绝无半点 Web 套壳！
 
 ## 新图标征集活动
 
-为了提高 FFmpegFreeUI 的辨识度，特此举办图标征集活动，即日起至二周年时刻，期限一年，最终结果由群内成员初审 + 开发者本人最终决定，**最终被采纳者** 和 **未采纳但优秀作品者** 可直接获得 SP 支持者包和金钱奖励（不确定有多少，取决于我富裕程度），参与既表示同意此条款：创作者继续拥有作品的版权但无权撤回给 FFmpegFreeUI 的使用授权，图标还将被用于 FFmpegFreeUI 商业宣传用途以及其他所有人的非商业用途。
+为了提高 3FUI 的辨识度，特此举办图标征集活动，即日起至二周年时刻，期限一年，最终结果由群内成员初审 + 开发者本人最终决定，**最终被采纳者** 和 **未采纳但优秀作品者** 可直接获得 SP 支持者包和金钱奖励（不确定有多少，取决于我富裕程度），参与既表示同意此条款：创作者继续拥有作品的版权但无权撤回给 3FUI 的使用授权，图标还将被用于 3FUI 商业宣传用途以及其他所有人的非商业用途。
 
 图标设计有以下两条赛道，虽然原则上只会采纳一个但如遇质量足够高会同时采纳：
 
@@ -67,13 +90,13 @@ FFmpegFreeUI Agent 智能体现已可用！专属于 FFmpegFreeUI 的副驾驶�
 
 ## 旧版交由社区维护
 
-从 FFmpegFreeUI 6.0 开始，旧系统已不再兼容，且性能过低的电脑体验会很差，传统 GDI+ 路线的渲染版本现已交给所有开发者，可以自行开仓库继续维护 5.3 版本，该时期的源码可以直接去该标签处下载。但请注意，早期版本使用的 SunnyUI 也是付费授权的，如果不能购买该授权，必须撤掉所属 UI 组件或者撤掉 SP 功能。
+从 3FUI 6.0 开始，旧系统已不再兼容，且性能过低的电脑体验会很差，传统 GDI+ 路线的渲染版本现已交给所有开发者，可以自行开仓库继续维护 5.3 版本，该时期的源码可以直接去该标签处下载。但请注意，早期版本使用的 SunnyUI 也是付费授权的，如果不能购买该授权，必须撤掉所属 UI 组件或者撤掉 SP 功能。
 
 如果你维护了旧版本可以直接提 PR 写在这里。
 
 ## 设计定位和特点
 
-FFmpegFreeUI 与 [HandBrake](https://github.com/HandBrake/HandBrake)、[ShanaEncoder](https://shana.pe.kr/shanaencoder_portable) 同坐一桌，属于常规专业级压制转换软件，尽管被 **终末诗** 评价为比菠萝刹那更专业，但在我自己看来是同一桌。与菠萝刹那不同是，FFmpegFreeUI 只使用 ffmpeg 来执行任务，没有内置任何编解码器，需要用户手动放置 ffmpeg 或将其添加到环境变量中，这使得 FFmpegFreeUI 的性能始终保持在最新水平，同时也无需在参数上频繁更新。当 ffmpeg 更新的时候，你可以直接换上去使用，而不用等待任何事情。
+3FUI 与 [HandBrake](https://github.com/HandBrake/HandBrake)、[ShanaEncoder](https://shana.pe.kr/shanaencoder_portable) 同坐一桌，属于常规专业级压制转换软件，尽管被 **终末诗** 评价为比菠萝刹那更专业，但在我自己看来是同一桌。与菠萝刹那不同是，3FUI 只使用 ffmpeg 来执行任务，没有内置任何编解码器，需要用户手动放置 ffmpeg 或将其添加到环境变量中，这使得 3FUI 的性能始终保持在最新水平，同时也无需在参数上频繁更新。当 ffmpeg 更新的时候，你可以直接换上去使用，而不用等待任何事情。
 
 - 全自由转码，自由组合，任意自写参数
 - 专业调校的交互设计，主次分明，简洁高效
@@ -114,7 +137,7 @@ FFmpegFreeUI 与 [HandBrake](https://github.com/HandBrake/HandBrake)、[ShanaEnc
 
 ## 反馈渠道
 
-- FFmpegFreeUI 没有针对酒吧的炒饭进行预防，非正常操作极易引发报错
+- 3FUI 没有针对酒吧的炒饭进行预防，非正常操作极易引发报错
 - 故意卡 bug 造成的任何损失均与我无关
 - 要反馈任何问题，请优先到Q群，已经在此文件的开头写了
 - **不要在 B站 汇报问题！** 评论很容易被刷掉；私信也基本是让加群
@@ -135,7 +158,7 @@ FFmpegFreeUI 与 [HandBrake](https://github.com/HandBrake/HandBrake)、[ShanaEnc
 
 ## 许可和引用
 
-- FFmpegFreeUI 使用 MIT 开源许可，可以自由地使用和分发此软件
+- 3FUI 使用 MIT 开源许可，可以自由地使用和分发此软件
 - 仅在 GitHub 开源，在其他平台看到的源代码都不是本人！
 
 | 引用程序集                                                   | 许可证         | 作用                       |
@@ -157,13 +180,13 @@ FFmpegFreeUI 与 [HandBrake](https://github.com/HandBrake/HandBrake)、[ShanaEnc
 - 影视飓风 | 帧率的旧事 | [BV1hp4y1f7B5](https://www.bilibili.com/video/BV1hp4y1f7B5)
 - 终末诗 | 适用于小白的视频压缩教学 | [知乎](https://zhuanlan.zhihu.com/p/1913258114746122747)  此文章包含大量测试结果总结和设置教学<br>
   新手把这篇文章看完能学会很多东西，继续往下看之前先把这个打开看！！
-- 终末诗 | FFmpegFreeUI 入门教程 | [知乎](https://zhuanlan.zhihu.com/p/1943079795341623993)
+- 终末诗 | 3FUI 入门教程 | [知乎](https://zhuanlan.zhihu.com/p/1943079795341623993)
 
 ### 概念科普：封装格式和编码格式
 
 这是大众的广泛误区。
 
-既然你在用 FFmpegFreeUI，那就必须清楚这个最基本的概念，mp4 是封装格式，不是编码格式，没有 mp4 这种编码，x264 才是编码格式，mp4 只是外面的壳子，其内部可以塞 x264\x265\av1 等等主流编码。其余以此类推，而 mkv 所支持的编码最为广泛。
+既然你在用 3FUI，那就必须清楚这个最基本的概念，mp4 是封装格式，不是编码格式，没有 mp4 这种编码，x264 才是编码格式，mp4 只是外面的壳子，其内部可以塞 x264\x265\av1 等等主流编码。其余以此类推，而 mkv 所支持的编码最为广泛。
 
 ### NVIDIA NVENC 规格
 
@@ -184,7 +207,7 @@ https://en.wikipedia.org/wiki/Intel_Quick_Sync_Video
 
 ## 启动参数
 
-FFmpegFreeUI 具有和 FFmpeg 一样的参数调用方式，你可以随便找个终端来使用或者在外部程序中启动时传递，也可以用快捷方式做个测试；这些功能在原理上是走的插件功能。(需要5.0及以上版本)
+3FUI 具有和 FFmpeg 一样的参数调用方式，你可以随便找个终端来使用或者在外部程序中启动时传递，也可以用快捷方式做个测试；这些功能在原理上是走的插件功能。(需要5.0及以上版本)
 
 | 参数                | 作用                        | 在情况下使用 |
 | ------------------- | --------------------------- | ------------ |
@@ -200,35 +223,13 @@ FFmpegFreeUI 具有和 FFmpeg 一样的参数调用方式，你可以随便找�
 
 ## 远程调用
 
-在设置中打开远程调用即可监听指定的端口，收到消息就会开始任务，消息数据内容与启动参数是一样的，这就意味着 FFmpegFreeUI 可以部署在一个巨大的局域网中，只要 FFmpegFreeUI 能够访问文件，那么你可以从这个局域网的任意电脑通过其他程序发任务给编码机上的 FFmpegFreeUI，只要有权限访问，远程访问也是理所当然的。
+在设置中打开远程调用即可监听指定的端口，收到消息就会开始任务，消息数据内容与启动参数是一样的，这就意味着 3FUI 可以部署在一个巨大的局域网中，只要 3FUI 能够访问文件，那么你可以从这个局域网的任意电脑通过其他程序发任务给编码机上的 3FUI，只要有权限访问，远程访问也是理所当然的。
 
 注意发起程序需要用 UDP 协议发送，默认端口 10591。
 
 (需要5.0及以上版本)
 
 ## 插件开发
-
-Ext Plugin API v2 面向所有插件开发者，主要能力包括：
-
-- 在宿主公开的稳定 UI 锚点插入输入框、下拉框、按钮或自定义控件；
-- 装饰公开的原生控件，并把插件状态随 v6 预设保存；
-- 在预设、队列、任务准备、命令构建、外部进程和任务终态阶段注册有序处理器；
-- 在异步任务阶段接收停止令牌，并向原生任务日志报告进度和结构化结果。
-
-Ext Plugin API v2 是可选组件。只有程序根目录同时存在 `FFmpegFreeUI.Ext.PluginHost.dll` 和
-`FFmpegFreeUI.Ext.PluginSdk.dll` 时才会启用；缺少 SDK 时，FFmpegFreeUI 会在加载程序集前静默跳过依赖它的插件，
-主程序与不依赖 SDK 的旧版 `Entry` 插件仍可正常运行。
-
-从创建类库、实现入口、保存 UI 状态，到完整处理链、全部锚点和每个阶段实际能修改的字段，请阅读
-[Ext Plugin API v2 中文开发指南](doc/Ext-Plugin-API-v2.zh-CN.md)。仓库同时提供
-[C# 全接口综合示例](Samples/FFmpegFreeUI.Ext.PluginApi.Sample)和
-[VB.NET 全接口综合示例](Samples/FFmpegFreeUI.Ext.PluginApi.VbVmafSample)。两个示例均覆盖全部公开 UI 锚点和
-处理阶段，分别以 SHA-256 与 VMAF 展示成功后处理。
-
-旧版 `Entry` / `SetHost_*` 回调继续兼容，适合已有插件或添加独立页面；需要嵌入原生参数页、参与参数
-处理链或获得任务取消令牌的新插件应使用 Ext Plugin API v2。
-
-### 官方 Entry 插件 API
 
 插件通过反射加载，不需要引用 3FUI，只通过下面列出的委托与宿主通信。你只需要创建一个 .NET 10 Windows 窗体（或 WPF）项目，并在程序集的 `Entry` 类中提供共享/静态的 `Entry` 方法。
 
