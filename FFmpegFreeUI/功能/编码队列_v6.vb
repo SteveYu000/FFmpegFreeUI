@@ -41,6 +41,7 @@ Public Class 编码队列_v6
 
     Public Shared Event 队列已变化()
     Public Shared Event 任务已更新(任务 As 编码任务_v6)
+    Friend Shared Event 插件事件已触发(事件名称 As String, 任务 As 编码任务_v6, 日志 As 编码任务日志条目_v6)
 
     Public Shared Property 错误输出匹配字符串列表 As New List(Of String) From {"Error", "Invalid", "cannot", "failed", "not supported", "require", "must be", "Could not", "is experimental", "if you want to use it", "Nothing was written", "Unable to choose"}
     Public Shared ReadOnly Property 华强买瓜宇宙任务名称列表 As New List(Of String) From {"有一个人前来买瓜", "哥们，这瓜多少钱一斤啊", "两块钱一斤", "这瓜皮子是金子做的还是瓜粒子是金子做的", "你瞧瞧现在这哪有瓜啊", "这都是大棚的瓜", "你嫌贵我还嫌贵呢", "你这瓜保熟嘛", "我开水果摊的能卖你生瓜蛋子", "我问你这瓜保熟嘛", "你是故意找茬是不是", "你要不要吧", "这瓜要熟我肯定要啊", "那它要是不熟怎么办啊", "要是不熟，我自己吃了它，满意了吧", "十五斤三十块", "你这哪够十五斤呐，你这秤有问题啊", "你TM故意找茬是不是，你到底要不要", "吸铁石", "这瓜要生的你自己吞进去啊", "你TM劈我瓜是吧", "萨日朗~"
@@ -181,6 +182,9 @@ Public Class 编码队列_v6
             SyncLock 队列锁
                 队列.AddRange(restored)
             End SyncLock
+            For Each task In restored
+                触发插件事件("task.added", task)
+            Next
             RaiseEvent 队列已变化()
         End If
 
@@ -238,6 +242,7 @@ Public Class 编码队列_v6
         SyncLock 队列锁
             队列.Add(task)
         End SyncLock
+        触发插件事件("task.added", task)
         RaiseEvent 队列已变化()
         请求调度()
         Return task
@@ -259,6 +264,7 @@ Public Class 编码队列_v6
         SyncLock 队列锁
             队列.Add(task)
         End SyncLock
+        触发插件事件("task.added", task)
         RaiseEvent 队列已变化()
         请求调度()
         Return task
@@ -398,6 +404,7 @@ Public Class 编码队列_v6
 
         广播任务更新(starting.Select(Function(x) x.Key))
         For Each item In starting
+            触发插件事件("task.started", item.Key)
             异步执行任务(item.Key, item.Value)
         Next
         If starting.Count > 0 Then 请求调度()
@@ -474,6 +481,7 @@ Public Class 编码队列_v6
             Next
         End SyncLock
         For Each task In removed
+            触发插件事件("task.removed", task)
             task.释放资源()
         Next
         If removed.Count > 0 Then RaiseEvent 队列已变化()
@@ -606,6 +614,7 @@ Public Class 编码队列_v6
                 标记任务已实际启动()
             End SyncLock
             RaiseEvent 任务已更新(nextTask)
+            触发插件事件("task.started", nextTask)
             异步执行任务(nextTask, 执行标识)
         Loop
     End Sub
@@ -649,6 +658,11 @@ Public Class 编码队列_v6
 
     Friend Shared Sub 通知任务更新(task As 编码任务_v6)
         RaiseEvent 任务已更新(task)
+    End Sub
+
+    Friend Shared Sub 触发插件事件(事件名称 As String, task As 编码任务_v6, Optional 日志 As 编码任务日志条目_v6 = Nothing)
+        If String.IsNullOrWhiteSpace(事件名称) OrElse task Is Nothing Then Exit Sub
+        RaiseEvent 插件事件已触发(事件名称, task, 日志)
     End Sub
 
     Friend Shared Sub 标记任务出错()
@@ -1375,6 +1389,7 @@ Public Class 编码任务_v6
         If 文本 Is Nothing Then Exit Sub
         Dim stageName = If(步骤项?.显示名称, If(当前步骤?.显示名称, ""))
         Dim isError = 强制错误 OrElse 类别 = 编码任务日志类别_v6.错误 OrElse 编码队列_v6.是否错误输出(文本)
+        Dim addedEntry As 编码任务日志条目_v6 = Nothing
         SyncLock 日志锁
             If 类别 = 编码任务日志类别_v6.进度 AndAlso Not isError Then
                 Dim nowTime = DateTime.Now
@@ -1383,7 +1398,7 @@ Public Class 编码任务_v6
             End If
 
             日志序号 += 1
-            Dim entry As New 编码任务日志条目_v6 With {
+            addedEntry = New 编码任务日志条目_v6 With {
                 .序号 = 日志序号,
                 .时间 = DateTime.Now,
                 .阶段名 = stageName,
@@ -1391,14 +1406,14 @@ Public Class 编码任务_v6
                 .类别 = If(isError, 编码任务日志类别_v6.错误, 类别),
                 .是否错误 = isError
             }
-            完整日志缓存.Add(entry)
-            If entry.类别 = 编码任务日志类别_v6.进度 Then 进度日志数量 += 1
+            完整日志缓存.Add(addedEntry)
+            If addedEntry.类别 = 编码任务日志类别_v6.进度 Then 进度日志数量 += 1
             日志版本号 += 1
             实时输出 = 文本
 
             最新原始日志文本 = 文本
             最新原始日志是否错误 = isError
-            If entry.类别 <> 编码任务日志类别_v6.进度 Then
+            If addedEntry.类别 <> 编码任务日志类别_v6.进度 Then
                 非进度输出列表.Add(文本)
                 最新非进度日志文本 = 文本
                 最新非进度日志是否错误 = isError
@@ -1407,6 +1422,13 @@ Public Class 编码任务_v6
             更新最新底部日志()
             裁剪日志缓存()
         End SyncLock
+        If addedEntry IsNot Nothing Then
+            If addedEntry.类别 = 编码任务日志类别_v6.进度 Then
+                编码队列_v6.触发插件事件("task.progress", Me, addedEntry)
+            Else
+                编码队列_v6.触发插件事件("task.log", Me, addedEntry)
+            End If
+        End If
         If 通知更新 Then 编码队列_v6.通知任务更新(Me)
     End Sub
 
@@ -1599,6 +1621,11 @@ Public Class 编码任务_v6
             清理帧服务器缓存()
             恢复系统状态_v6()
             编码队列_v6.通知任务更新(Me)
+            If 状态 = 编码任务状态_v6.已完成 Then
+                编码队列_v6.触发插件事件("task.completed", Me)
+            ElseIf 状态 = 编码任务状态_v6.错误 Then
+                编码队列_v6.触发插件事件("task.failed", Me)
+            End If
         End Try
     End Function
 
@@ -1770,6 +1797,7 @@ Public Class 编码任务_v6
                     任务耗时计时器.Stop()
                     追加日志("[3FUI] 任务已暂停", 编码任务日志类别_v6.系统, 当前步骤, False, False)
                     编码队列_v6.通知任务更新(Me)
+                    编码队列_v6.触发插件事件("task.paused", Me)
                 End If
             End If
         Catch ex As Exception
@@ -1786,6 +1814,7 @@ Public Class 编码任务_v6
                     设定系统状态_v6()
                     追加日志("[3FUI] 任务已恢复", 编码任务日志类别_v6.系统, 当前步骤, False, False)
                     编码队列_v6.通知任务更新(Me)
+                    编码队列_v6.触发插件事件("task.resumed", Me)
                 End If
             End If
         Catch ex As Exception
@@ -1816,6 +1845,7 @@ Public Class 编码任务_v6
             任务耗时计时器.Stop()
             追加日志("[3FUI] 正在停止任务", 编码任务日志类别_v6.系统, 当前步骤, False, False)
             编码队列_v6.通知任务更新(Me)
+            编码队列_v6.触发插件事件("task.stopped", Me)
             Return stoppedExecution
         Catch ex As Exception
             追加日志("[3FUI] 停止失败：" & ex.Message, 编码任务日志类别_v6.错误, 当前步骤, True)
@@ -1998,6 +2028,7 @@ Public Class 编码进度_v6
     Private Shared ReadOnly QPattern As New Regex("q=\s*(?<value>[\d\.\-]+)", RegexOptions.Compiled)
     Private Shared ReadOnly BitratePattern As New Regex("bitrate=\s*(?<value>[\d\.]+)\s*kbits/s", RegexOptions.Compiled)
     Private Shared ReadOnly SpeedPattern As New Regex("speed=\s*(?<value>[\d\.eE\+\-]+)\s*x", RegexOptions.Compiled)
+    Private Const 最低有效速度 As Double = 0.01
 
     Public Property 当前阶段 As String = ""
     Public Property 总时长 As TimeSpan = TimeSpan.Zero
@@ -2040,11 +2071,25 @@ Public Class 编码进度_v6
             Dim speed As Double
             If Double.TryParse(sp.Groups("value").Value, NumberStyles.Any, CultureInfo.InvariantCulture, speed) Then
                 效率文本 = 格式化效率文本(speed)
-                If 总时长.TotalSeconds > 0 AndAlso 当前时间.TotalSeconds > 0 AndAlso speed > 0 Then
+                If 总时长.TotalSeconds > 0 AndAlso 当前时间.TotalSeconds > 0 AndAlso
+                   Not Double.IsNaN(speed) AndAlso Not Double.IsInfinity(speed) AndAlso speed >= 最低有效速度 Then
                     Dim remain = Math.Max(0, (总时长.TotalSeconds - 当前时间.TotalSeconds) / speed)
-                    时间文本 = 格式化秒(remain)
+                    ' FFmpeg startup samples can report an extremely small speed (for example 0.00x).
+                    ' Do not expose the resulting multi-year ETA; wait for a usable sample instead.
+                    Dim maximumRemain = Math.Max(TimeSpan.FromDays(30).TotalSeconds, 总时长.TotalSeconds * 100.0R)
+                    If Not Double.IsNaN(remain) AndAlso Not Double.IsInfinity(remain) AndAlso remain <= maximumRemain Then
+                        时间文本 = 格式化秒(remain)
+                    Else
+                        时间文本 = ""
+                    End If
+                Else
+                    时间文本 = ""
                 End If
+            Else
+                时间文本 = ""
             End If
+        Else
+            时间文本 = ""
         End If
     End Sub
 
@@ -2088,10 +2133,19 @@ Public Class 编码进度_v6
     End Sub
 
     Public Shared Function 转换时间(value As String) As TimeSpan
-        Dim t As TimeSpan
-        If TimeSpan.TryParse(value, CultureInfo.InvariantCulture, t) Then Return t
+        If String.IsNullOrWhiteSpace(value) Then Return TimeSpan.Zero
+
+        ' FFprobe stores durations as plain seconds (for example "3600").
+        ' TimeSpan.TryParse treats a plain integer as days, which can inflate
+        ' the ETA by 24 hours per unit. Parse numeric values as seconds first.
         Dim seconds As Double
-        If Double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, seconds) Then Return TimeSpan.FromSeconds(seconds)
+        If Double.TryParse(value.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, seconds) Then
+            If Double.IsNaN(seconds) OrElse Double.IsInfinity(seconds) OrElse seconds < 0 OrElse seconds > TimeSpan.MaxValue.TotalSeconds Then Return TimeSpan.Zero
+            Return TimeSpan.FromSeconds(seconds)
+        End If
+
+        Dim t As TimeSpan
+        If TimeSpan.TryParse(value.Trim(), CultureInfo.InvariantCulture, t) AndAlso t >= TimeSpan.Zero Then Return t
         Return TimeSpan.Zero
     End Function
 
@@ -2117,9 +2171,11 @@ Public Class 编码进度_v6
     End Function
 
     Public Shared Function 格式化秒(value As Double) As String
-        Dim h = CInt(Math.Floor(value / 3600.0))
-        Dim m = CInt(Math.Floor((value - h * 3600.0) / 60.0))
-        Dim s = CInt(Math.Floor(value - h * 3600.0 - m * 60.0))
+        If Double.IsNaN(value) OrElse Double.IsInfinity(value) OrElse value < 0 Then Return ""
+        Dim safeValue = Math.Min(value, TimeSpan.MaxValue.TotalSeconds)
+        Dim h = CLng(Math.Floor(safeValue / 3600.0R))
+        Dim m = CLng(Math.Floor((safeValue - h * 3600.0R) / 60.0R))
+        Dim s = CLng(Math.Floor(safeValue - h * 3600.0R - m * 60.0R))
         Dim parts As New List(Of String)
         If h > 0 Then parts.Add($"{h}h")
         If m > 0 OrElse h > 0 Then parts.Add($"{m}m")

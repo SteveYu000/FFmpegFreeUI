@@ -114,9 +114,7 @@ v6 开发者官方宣传视频：https://www.bilibili.com/video/BV1rT7E6wEK4<br>
 
 > 请勿让 **我** 或 **群友** 或 **专业人士** 或 **外行人士** 进行包括但不限于这些行为：算卦、猜谜、托梦、占卜、人脑推理、强行传教、交流物理学、灵能飞升、虚空扰动、尝试进入量子隧道等等，如有以上行为或类似行为的，造成的全部后果由用户全责承担。
 
-重要的事情再说三遍：不要算卦！尽快提供完整信息！  
-重要的事情再说三遍：不要算卦！尽快提供完整信息！  
-重要的事情再说三遍：不要算卦！尽快提供完整信息！
+重要的事情再说三遍：不要算卦！尽快提供完整信息！<br>重要的事情再说三遍：不要算卦！尽快提供完整信息！<br>重要的事情再说三遍：不要算卦！尽快提供完整信息！
 
 你说这种人是不是生活不能自理啊，他不是来求助的，是来求心理安慰的！
 
@@ -214,6 +212,211 @@ API v2 是可选组件。只有程序根目录同时存在 `FFmpegFreeUI.PluginH
 
 旧版 `Entry` / `SetHost_*` 回调继续兼容，适合已有插件或添加独立页面；需要嵌入原生参数页、参与参数
 处理链或获得任务取消令牌的新插件应使用 Plugin API v2。
+
+### 官方 Entry 插件 API
+
+插件通过反射加载，不需要引用 3FUI，只通过下面列出的委托与宿主通信。你只需要创建一个 .NET 10 Windows 窗体（或 WPF）项目，并在程序集的 `Entry` 类中提供共享/静态的 `Entry` 方法。
+
+```vb
+Public Class Entry
+    Public Shared Sub Entry()
+        '初始化、注册界面和队列事件
+    End Sub
+End Class
+```
+
+```csharp
+public class Entry
+{
+    public static void Entry()
+    {
+        // 初始化、注册界面和队列事件
+    }
+}
+```
+
+### 添加界面
+
+```vb
+Public Shared Property HostCall_AddCustomWinformPanel As Action(Of String, Control)
+Public Shared Sub SetHost_AddCustomWinformPanel(action As Object)
+    HostCall_AddCustomWinformPanel = CType(action, Action(Of String, Control))
+End Sub
+
+Public Shared Property HostCall_AddCustomWpfPanel As Action(Of String, UIElement)
+Public Shared Sub SetHost_AddCustomWpfPanel(action As Object)
+    HostCall_AddCustomWpfPanel = CType(action, Action(Of String, UIElement))
+End Sub
+
+'调用示例
+HostCall_AddCustomWinformPanel?.Invoke("我的插件", New MyUserControl())
+'WPF 使用：HostCall_AddCustomWpfPanel?.Invoke("我的插件", New MyWpfControl())
+```
+
+```csharp
+public static Action<string, Control> HostCall_AddCustomWinformPanel { get; set; }
+public static void SetHost_AddCustomWinformPanel(object action)
+    => HostCall_AddCustomWinformPanel = (Action<string, Control>)action;
+
+public static Action<string, UIElement> HostCall_AddCustomWpfPanel { get; set; }
+public static void SetHost_AddCustomWpfPanel(object action)
+    => HostCall_AddCustomWpfPanel = (Action<string, UIElement>)action;
+
+//调用示例
+HostCall_AddCustomWinformPanel?.Invoke("我的插件", new MyUserControl());
+```
+
+### 添加编码任务
+
+```vb
+Public Shared Property HostCall_AddMissionToQueueWithArgs As Action(Of String, String, String, String)
+Public Shared Sub SetHost_AddMissionToQueueWithArgs(action As Object)
+    HostCall_AddMissionToQueueWithArgs = CType(action, Action(Of String, String, String, String))
+End Sub
+
+Public Shared Property HostCall_AddMissionToQueueWith3fuiFile As Action(Of String, String, String, String)
+Public Shared Sub SetHost_AddMissionToQueueWith3fuiFile(action As Object)
+    HostCall_AddMissionToQueueWith3fuiFile = CType(action, Action(Of String, String, String, String))
+End Sub
+
+'参数依次为：ffmpeg 参数（不要以 ffmpeg 开头）、显示名称、输出路径、输入路径（可空）
+HostCall_AddMissionToQueueWithArgs?.Invoke(args, name, output, input)
+HostCall_AddMissionToQueueWith3fuiFile?.Invoke(presetPath, name, output, input)
+```
+
+```csharp
+public static Action<string, string, string, string> HostCall_AddMissionToQueueWithArgs { get; set; }
+public static void SetHost_AddMissionToQueueWithArgs(object action)
+    => HostCall_AddMissionToQueueWithArgs = (Action<string, string, string, string>)action;
+
+public static Action<string, string, string, string> HostCall_AddMissionToQueueWith3fuiFile { get; set; }
+public static void SetHost_AddMissionToQueueWith3fuiFile(object action)
+    => HostCall_AddMissionToQueueWith3fuiFile = (Action<string, string, string, string>)action;
+
+HostCall_AddMissionToQueueWithArgs?.Invoke(args, name, output, input);
+HostCall_AddMissionToQueueWith3fuiFile?.Invoke(presetPath, name, output, input);
+```
+
+### 编码队列事件
+
+6.1.28 起可以订阅编码队列事件。插件实现 `SetHost_SubscribeQueueEvents`，注册器类型是 `Action(Of String, Object)`（C# 为 `Action<string, object>`）。调用注册器时，第一个参数是事件筛选器，第二个参数必须是 `Action(Of String, String)`（C# 为 `Action<string, string>`）回调；回调收到的第一个参数是事件名，第二个参数是 JSON 字符串。回调可能来自后台线程，插件应自行切回 UI 线程；回调中的异常会被宿主隔离，不会中断编码队列。
+
+```vb
+Public Shared Property HostCall_SubscribeQueueEvents As Action(Of String, Object)
+Public Shared Sub SetHost_SubscribeQueueEvents(action As Object)
+    HostCall_SubscribeQueueEvents = CType(action, Action(Of String, Object))
+End Sub
+
+Public Shared Sub Entry()
+    HostCall_SubscribeQueueEvents?.Invoke("*", AddressOf OnQueueEvent)
+    '也可以只订阅一个事件：HostCall_SubscribeQueueEvents?.Invoke("task.completed", AddressOf OnQueueEvent)
+End Sub
+
+Private Shared Sub OnQueueEvent(eventName As String, json As String)
+    '按需反序列化 json；不要在这里阻塞编码线程
+    Dim data = System.Text.Json.JsonDocument.Parse(json)
+    Dim taskId = data.RootElement.GetProperty("task").GetProperty("id").GetString()
+End Sub
+```
+
+```csharp
+public static Action<string, object> HostCall_SubscribeQueueEvents { get; set; }
+public static void SetHost_SubscribeQueueEvents(object action)
+    => HostCall_SubscribeQueueEvents = (Action<string, object>)action;
+
+public static void Entry()
+{
+    HostCall_SubscribeQueueEvents?.Invoke("*", OnQueueEvent);
+    //只订阅完成事件：HostCall_SubscribeQueueEvents?.Invoke("task.completed", OnQueueEvent);
+}
+
+private static void OnQueueEvent(string eventName, string json)
+{
+    using var data = System.Text.Json.JsonDocument.Parse(json);
+    var taskId = data.RootElement.GetProperty("task").GetProperty("id").GetString();
+}
+```
+
+支持的事件名如下：
+
+| 事件名 | 触发时机 |
+| --- | --- |
+| `task.added` | 任务加入队列（包括恢复未处理任务） |
+| `task.started` | 任务实际开始执行 |
+| `task.paused` | 任务暂停成功 |
+| `task.resumed` | 任务恢复成功 |
+| `task.stopped` | 任务被停止 |
+| `task.completed` | 所有编码阶段成功完成 |
+| `task.failed` | 编码阶段退出码非零或发生异常 |
+| `task.log` | 新增一条非进度日志 |
+| `task.progress` | 新增一条进度日志（宿主按约 1 秒节流） |
+| `task.removed` | 任务从队列移除 |
+
+事件 JSON 的主要字段为 `eventName`、`timestamp`、`task` 和 `log`。`task` 包含 `id`、`name`、`inputPath`、`outputPath`、`status`、`statusCode`、`progress`、`progressText`、`currentStage`、`realtimeOutput` 和 `nonProgressOutput`；`task.log`/`task.progress` 额外提供 `log.sequence`、`log.time`、`log.text`、`log.category`、`log.categoryCode`、`log.isError` 与 `log.stage`。进度日志经过宿主节流，普通日志不会触发 `task.progress`，因此可以按需选择低频的 `task.log` 或完整的 `task.progress`。
+
+### 媒体流选择器
+
+参数依次为：文件路径、视频/音频/字幕结果目标对象、输入文件索引，以及三个已选流索引字符串。目标对象需要提供 `Text` 属性；所有参数均可传 `Nothing`/`null`。
+
+```vb
+Public Shared Property HostCall_MediaStreamVisualSelector As Action(Of String, Object, Object, Object, String, String, String, String)
+Public Shared Sub SetHost_MediaStreamVisualSelector(action As Object)
+    HostCall_MediaStreamVisualSelector = CType(action, Action(Of String, Object, Object, Object, String, String, String, String))
+End Sub
+
+HostCall_MediaStreamVisualSelector?.Invoke(filePath, videoTarget, audioTarget, subtitleTarget, "0", "0", "0", "")
+```
+
+```csharp
+public static Action<string, object, object, object, string, string, string, string> HostCall_MediaStreamVisualSelector { get; set; }
+public static void SetHost_MediaStreamVisualSelector(object action)
+    => HostCall_MediaStreamVisualSelector = (Action<string, object, object, object, string, string, string, string>)action;
+
+HostCall_MediaStreamVisualSelector?.Invoke(filePath, videoTarget, audioTarget, subtitleTarget, "0", "0", "0", "");
+```
+
+### 安装与发布
+
+生成项目后，将输出目录中与项目同名的 `.dll` 的后缀改为 `.3fui.dll`，放入 3FUI 程序目录的 `Plugin` 文件夹并重启，该文件夹可能需要手动创建。插件依赖的其他程序集也要一起复制，但不要改它们的扩展名。
+
+## Agent 自定义模型、推理级别、上下文总量
+
+手动创建并编辑 `Agent/CustomModels.json`，3FUI 不会主动创建或覆盖这个文件；修改后在 Agent 页面点击重载连接即可重新读取。
+
+```json
+{
+  "version": 1,
+  "global": {
+    "models": [
+      {
+        "id": "global-custom-model",
+        "reasoning_efforts": ["low", "medium", "high"],
+        "context_window_tokens": 200000
+      }
+    ]
+  },
+  "endpoints": [
+    {
+      "endpoint": "https://api.example.com/v1",
+      "models": [
+        {
+          "id": "endpoint-custom-model",
+          "reasoning_efforts": ["none", "low", "medium", "high", "xhigh"],
+          "context_window_tokens": 1000000
+        },
+        {
+          "id": "model-with-default-efforts",
+          "reasoning_efforts": []
+        }
+      ]
+    }
+  ]
+}
+```
+
+`global.models` 会应用到所有端点；`endpoints` 中的配置只应用于 `endpoint` 与当前 Agent 端点地址一致的项目，比较时会忽略地址末尾的 `/` 和大小写。`id` 是实际发送给接口的模型名称。新增模型的 `reasoning_efforts` 可以省略或留空，此时使用 3FUI 的默认推理级别。`context_window_tokens` 是该模型的上下文总量，单位为 token；省略或设为 `0` 时继续使用 3FUI 内置值，不能使用负数。
+
+自定义模型会与端点返回的模型合并并按 `id` 去重；同一模型在全局、指定端点或端点响应中重复出现时，推理级别会合并并去重，指定端点中大于 `0` 的上下文总量会覆盖同一模型的全局值。如果端点的 `/models` 接口不可用，但当前配置提供了可用模型，Agent 会直接使用自定义模型列表。配置文件格式无效时不会影响端点原有模型，Agent 页面会显示对应提示。
 
 ## 你已获得成就
 
