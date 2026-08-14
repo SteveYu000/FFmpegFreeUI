@@ -31,6 +31,7 @@ Partial Class Form_v6_起始页面
         ModernPanel3 = New LakeUI.ModernPanel()
         ModernPanel1 = New LakeUI.ModernPanel()
         ModernPanel5 = New LakeUI.ModernPanel()
+        MB_检查更新 = New LakeUI.ModernButton()
         MB_3FR单源录制器 = New LakeUI.ModernButton()
         MB_关于3F项目 = New LakeUI.ModernButton()
         HtmlColorLabel7 = New LakeUI.HtmlColorLabel()
@@ -192,6 +193,7 @@ Partial Class Form_v6_起始页面
         ModernPanel5.Controls.Add(即将推出2)
         ModernPanel5.Controls.Add(即将推出1)
         ModernPanel5.Controls.Add(HtmlColorLabel5)
+        ModernPanel5.Controls.Add(MB_检查更新)
         ModernPanel5.Dock = DockStyle.Fill
         ModernPanel5.Location = New Point(330, 130)
         ModernPanel5.Name = "ModernPanel5"
@@ -199,6 +201,25 @@ Partial Class Form_v6_起始页面
         ModernPanel5.Padding = New Padding(15)
         ModernPanel5.Size = New Size(304, 500)
         ModernPanel5.TabIndex = 4
+        '
+        ' MB_检查更新
+        '
+        MB_检查更新.AnimationDuration = 0
+        MB_检查更新.BackColor1 = Color.Transparent
+        MB_检查更新.BorderRadius = 10
+        MB_检查更新.BorderSize = 0
+        MB_检查更新.Dock = DockStyle.Top
+        MB_检查更新.HoverBackColor1 = Color.FromArgb(CByte(40), CByte(220), CByte(220), CByte(220))
+        MB_检查更新.Location = New Point(20, 20)
+        MB_检查更新.Margin = New Padding(2)
+        MB_检查更新.Name = "MB_检查更新"
+        MB_检查更新.PressedBackColor1 = Color.FromArgb(CByte(60), CByte(220), CByte(220), CByte(220))
+        MB_检查更新.Size = New Size(264, 50)
+        MB_检查更新.SubText = "点击手动检查是否有新版本"
+        MB_检查更新.SubTextForeColor = Color.DeepSkyBlue
+        MB_检查更新.TabIndex = 28
+        MB_检查更新.Text = "检查更新"
+        MB_检查更新.TextAlign = LakeUI.ModernButton.TextAlignEnum.Center
         ' 
         ' MB_3FR单源录制器
         ' 
@@ -612,4 +633,5 @@ Partial Class Form_v6_起始页面
     Friend WithEvents MB_关于3F项目 As LakeUI.ModernButton
     Friend WithEvents MB_3FR单源录制器 As LakeUI.ModernButton
     Friend WithEvents HtmlColorLabel7 As LakeUI.HtmlColorLabel
+    Friend WithEvents MB_检查更新 As LakeUI.ModernButton
 End Class

@@ -12,6 +12,42 @@ Public Class Form_v6_起始页面
         Me.MP_新闻列表.Width = a
     End Sub
 
+    Private Async Sub MB_检查更新_Click(sender As Object, e As EventArgs) Handles MB_检查更新.Click
+        MB_检查更新.Enabled = False
+        MB_检查更新.Text = "正在检查更新"
+        MB_检查更新.SubText = "正在连接 GitHub…"
+        MB_检查更新.SubTextForeColor = Color.DeepSkyBlue
+
+        Try
+            Dim 检查结果 = Await 网络功能_v6_软件版本检查.手动检查新版本Async()
+
+            If Not 检查结果.检查成功 Then
+                MB_检查更新.Text = "检查更新"
+                MB_检查更新.SubText = "检查失败，点击重试"
+                MB_检查更新.SubTextForeColor = Color.Orange
+            ElseIf String.IsNullOrWhiteSpace(检查结果.最新版本号) Then
+                MB_检查更新.Text = "暂无可用更新"
+                MB_检查更新.SubText = $"当前版本 {检查结果.当前版本号}"
+                MB_检查更新.SubTextForeColor = Color.Silver
+            ElseIf 检查结果.有新版本 Then
+                MB_检查更新.Text = "发现新版本"
+                MB_检查更新.SubText = $"最新版本 {检查结果.最新版本号}"
+                MB_检查更新.SubTextForeColor = Color.LimeGreen
+            Else
+                MB_检查更新.Text = "已是最新版本"
+                MB_检查更新.SubText = $"当前版本 {检查结果.当前版本号}"
+                MB_检查更新.SubTextForeColor = Color.Silver
+            End If
+        Catch ex As Exception
+            Debug.WriteLine($"手动检查新版本失败：{ex.Message}")
+            MB_检查更新.Text = "检查更新"
+            MB_检查更新.SubText = "检查失败，点击重试"
+            MB_检查更新.SubTextForeColor = Color.Orange
+        Finally
+            MB_检查更新.Enabled = True
+        End Try
+    End Sub
+
     Private Sub MCB_清理内存_SelectedIndexChanged(sender As Object, e As EventArgs) Handles MCB_清理内存.SelectedIndexChanged
         Select Case MCB_清理内存.SelectedIndex
             Case 0

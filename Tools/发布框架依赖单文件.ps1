@@ -3,14 +3,19 @@
     发布 FFmpegFreeUI API Extended Edition 的框架依赖单文件版本。
 
 .DESCRIPTION
-    默认发布 win-x64。主程序会打包为单个 EXE，但不会包含 .NET 运行时。
-    可选择发布 win-arm64、同时发布两个架构、启用单文件压缩，或附带 Ext Plugin API v2 组件。
+    默认发布 win-x64。主程序会打包为单个 EXE，但不会包含 .NET 运行时；同时默认附带
+    FFmpegFreeUI.Ext.PluginHost.dll 和 FFmpegFreeUI.Ext.PluginSdk.dll。
+    可选择发布 win-arm64、同时发布两个架构、启用单文件压缩，或使用 -ExcludeExtPluginApi
+    显式关闭 Ext Plugin API v2 组件。
 
 .EXAMPLE
     .\Tools\发布框架依赖单文件.ps1
 
 .EXAMPLE
-    .\Tools\发布框架依赖单文件.ps1 -Architecture all -IncludeExtPluginApi -Compress
+    .\Tools\发布框架依赖单文件.ps1 -Architecture all -Compress
+
+.EXAMPLE
+    .\Tools\发布框架依赖单文件.ps1 -ExcludeExtPluginApi
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\Tools\发布框架依赖单文件.ps1 -Architecture arm64
@@ -24,6 +29,9 @@ param(
 
     [Parameter()]
     [switch]$IncludeExtPluginApi,
+
+    [Parameter()]
+    [switch]$ExcludeExtPluginApi,
 
     [Parameter()]
     [switch]$Compress,
@@ -41,6 +49,13 @@ $插件宿主项目 = Join-Path $仓库根目录 "FFmpegFreeUI.Ext.PluginHost\FF
 $插件SDK项目 = Join-Path $仓库根目录 "FFmpegFreeUI.Ext.PluginSdk\FFmpegFreeUI.Ext.PluginSdk.csproj"
 $输出根目录 = Join-Path $仓库根目录 "artifacts\FrameworkDependentSingleFile"
 $配置 = "Release"
+
+if ($IncludeExtPluginApi -and $ExcludeExtPluginApi) {
+    throw "IncludeExtPluginApi 与 ExcludeExtPluginApi 不能同时使用。"
+}
+
+# Ext Plugin API v2 组件现在是默认发布内容；保留 IncludeExtPluginApi 仅用于兼容旧命令。
+$应包含ExtPluginApi = -not $ExcludeExtPluginApi
 
 function Invoke-DotNet {
     param(
@@ -129,7 +144,7 @@ function Publish-Architecture {
         throw "发布命令已结束，但未找到主程序：$主程序"
     }
 
-    if ($IncludeExtPluginApi) {
+    if ($应包含ExtPluginApi) {
         Copy-Item -LiteralPath $插件宿主文件 -Destination (Join-Path $输出目录 "FFmpegFreeUI.Ext.PluginHost.dll") -Force
         Copy-Item -LiteralPath $插件SDK文件 -Destination (Join-Path $输出目录 "FFmpegFreeUI.Ext.PluginSdk.dll") -Force
     }
@@ -160,7 +175,7 @@ if (-not [int]::TryParse($主版本文本, [ref]$主版本) -or $主版本 -lt 1
 $插件宿主文件 = ""
 $插件SDK文件 = ""
 
-if ($IncludeExtPluginApi) {
+if ($应包含ExtPluginApi) {
     Write-Host "正在构建 Ext Plugin API v2 组件 ..." -ForegroundColor Cyan
     $构建参数 = @("build", $插件宿主项目, "-c", $配置)
     if ($NoRestore) {
