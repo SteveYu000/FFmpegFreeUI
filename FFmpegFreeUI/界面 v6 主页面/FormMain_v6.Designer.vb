@@ -54,7 +54,7 @@ Partial Class FormMain_v6
         ModernTabListControl1.Controls.Add(ModernTextBox1)
         ModernTabListControl1.Dock = DockStyle.Fill
         ModernTabPage1.IsDescription = True
-        ModernTabPage1.Text = "FFmpegFreeUI"
+        ModernTabPage1.Text = "FFmpegFreeUI API Extended Edition"
         ModernTabPage2.Text = "起始页面"
         ModernTabPage3.Text = "编码队列"
         ModernTabPage4.IsSeparator = True
@@ -167,7 +167,7 @@ Partial Class FormMain_v6
         MinimumSize = New Size(1200, 700)
         Name = "FormMain_v6"
         StartPosition = FormStartPosition.CenterScreen
-        Text = "FFmpegFreeUI"
+        Text = "FFmpegFreeUI API Extended Edition"
         ModernTabListControl1.ResumeLayout(False)
         ResumeLayout(False)
     End Sub

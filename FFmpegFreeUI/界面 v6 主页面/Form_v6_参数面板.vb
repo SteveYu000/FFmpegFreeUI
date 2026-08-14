@@ -139,8 +139,13 @@ Public Class Form_v6_参数面板
     End Sub
 
     Public Sub 请求刷新参数状态()
-        ' 子页面仍可发出变更通知；汇总类页面只在切入时统一读取当前值。
         If 抑制自动刷新 OrElse IsDisposed Then Exit Sub
+        Select Case ModernTabListControl1.SelectedIndex
+            Case 参数总览页索引
+                刷新参数总览页()
+            Case 滤镜排序页索引
+                刷新滤镜排序页()
+        End Select
     End Sub
 
     Private Sub ModernTabListControl1_SelectedIndexChanged(sender As Object, e As EventArgs) Handles ModernTabListControl1.SelectedIndexChanged

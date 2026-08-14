@@ -1,8 +1,8 @@
 using System.Drawing;
 using System.Text.Json;
-using FFmpegFreeUI.PluginSdk;
+using FFmpegFreeUI.Ext.PluginSdk;
 
-namespace ThreeFui.PluginApi.Sample;
+namespace FFmpegFreeUI.Ext.PluginApi.Sample;
 
 public sealed partial class SamplePlugin
 {
@@ -12,20 +12,20 @@ public sealed partial class SamplePlugin
     private static readonly Color AccentColor = Color.FromArgb(70, 96, 180);
 
     /// <summary>装饰型锚点必须返回 null；这里给原生质量模式控件增加无障碍说明和事件观察。</summary>
-    private Control? CreateQualityModeDecoration(IPluginUiContext context)
+    private Control? CreateQualityModeDecoration(IExtPluginUiContext context)
     {
         var target = context.AnchorControl;
-        target.AccessibleDescription = "可由 C# Plugin API 综合示例配合使用的原生质量模式控件";
+        target.AccessibleDescription = "可由 C# Ext Plugin API 综合示例配合使用的原生质量模式控件";
 
         EventHandler changed = (_, _) =>
-            Log(PluginLogLevel.Trace, $"{context.SurfaceId} 的质量模式变为：{target.Text}");
+            Log(ExtPluginLogLevel.Trace, $"{context.SurfaceId} 的质量模式变为：{target.Text}");
         target.TextChanged += changed;
         target.Disposed += (_, _) => target.TextChanged -= changed;
         return null;
     }
 
     /// <summary>第二个装饰型锚点示例；ExtensionId / AnchorId 可用于诊断当前注册来源。</summary>
-    private Control? CreateParameterNameDecoration(IPluginUiContext context)
+    private Control? CreateParameterNameDecoration(IExtPluginUiContext context)
     {
         context.AnchorControl.AccessibleDescription =
             $"扩展 {context.ExtensionId} 正在装饰锚点 {context.AnchorId}";
@@ -33,14 +33,14 @@ public sealed partial class SamplePlugin
     }
 
     /// <summary>第三个装饰型锚点示例；不依赖 LakeUI 的具体控件类型。</summary>
-    private Control? CreateQualityValueDecoration(IPluginUiContext context)
+    private Control? CreateQualityValueDecoration(IExtPluginUiContext context)
     {
         context.AnchorControl.AccessibleName = "原生质量值（支持插件策略）";
         return null;
     }
 
     /// <summary>插入下拉框、输入框和按钮，并通过 StateJson 随预设保存。</summary>
-    private Control CreateQualityPolicyRow(IPluginUiContext context)
+    private Control CreateQualityPolicyRow(IExtPluginUiContext context)
     {
         var row = CreateRow(54);
         var title = CreateLabel("示例质量策略", 135);
@@ -59,9 +59,9 @@ public sealed partial class SamplePlugin
         row.Controls.AddRange(new Control[] { title, mode, crf, applyButton, identity });
 
         // ContainerControl 对插入型锚点非空；GetAnchorControl 可安全取得同一参数面板中的其他公开锚点。
-        var nativeMode = context.GetAnchorControl(ThreeFuiUiAnchors.ParametersVideoQualityMode);
-        var nativeName = context.GetAnchorControl(ThreeFuiUiAnchors.ParametersVideoQualityParameterName);
-        var nativeValue = context.GetAnchorControl(ThreeFuiUiAnchors.ParametersVideoQualityValue);
+        var nativeMode = context.GetAnchorControl(ExtFFmpegFreeUIUiAnchors.ParametersVideoQualityMode);
+        var nativeName = context.GetAnchorControl(ExtFFmpegFreeUIUiAnchors.ParametersVideoQualityParameterName);
+        var nativeValue = context.GetAnchorControl(ExtFFmpegFreeUIUiAnchors.ParametersVideoQualityValue);
         identity.Text =
             $"Plugin={context.PluginId}；Surface={context.SurfaceId}；" +
             $"容器={context.ContainerControl?.GetType().Name ?? "无"}";
@@ -123,7 +123,7 @@ public sealed partial class SamplePlugin
     }
 
     /// <summary>插入命令和进程相关选项，展示同一插件的多个 UI 扩展共享 StateJson。</summary>
-    private static Control CreateCommandOptionsRow(IPluginUiContext context)
+    private static Control CreateCommandOptionsRow(IExtPluginUiContext context)
     {
         var panel = CreateRow(88);
         panel.FlowDirection = FlowDirection.TopDown;
@@ -196,7 +196,7 @@ public sealed partial class SamplePlugin
     }
 
     /// <summary>第三个插入型锚点：控制成功后 SHA-256 校验，并提供显式刷新按钮。</summary>
-    private static Control CreatePostProcessRow(IPluginUiContext context)
+    private static Control CreatePostProcessRow(IExtPluginUiContext context)
     {
         var row = CreateRow(48);
         var hash = new CheckBox

@@ -62,7 +62,7 @@ Public Class 版本号
     Private Shared Function 清理版本号(Version As String) As String
         If String.IsNullOrWhiteSpace(Version) Then Return ""
 
-        Return Version.Split("+"c)(0).Trim()
+        Return Version.Trim()
     End Function
 
     Private Shared Function CompareVersionPart(A As String, B As String) As Integer

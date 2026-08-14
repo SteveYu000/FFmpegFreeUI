@@ -6,12 +6,12 @@
     <OptionExplicit>On</OptionExplicit>
     <OptionInfer>On</OptionInfer>
     <OptionStrict>On</OptionStrict>
-    <RootNamespace>ThreeFui.PluginApi.VbVmafSample</RootNamespace>
-    <AssemblyName>ThreeFui.PluginApi.VbVmafSample.3fui</AssemblyName>
+    <RootNamespace>FFmpegFreeUI.Ext.PluginApi.VbVmafSample</RootNamespace>
+    <AssemblyName>FFmpegFreeUI.Ext.PluginApi.VbVmafSample.3fui</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FFmpegFreeUI.PluginSdk\FFmpegFreeUI.PluginSdk.csproj">
+    <ProjectReference Include="..\..\FFmpegFreeUI.Ext.PluginSdk\FFmpegFreeUI.Ext.PluginSdk.csproj">
       <Private>false</Private>
     </ProjectReference>
   </ItemGroup>

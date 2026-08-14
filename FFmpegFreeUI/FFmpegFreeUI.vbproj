@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -12,15 +12,21 @@
     <SelfContained>False</SelfContained>
     <!--<IncludeNativeLibrariesForSelfExtract>True</IncludeNativeLibrariesForSelfExtract>-->
     <!--<EnableCompressionInSingleFile>True</EnableCompressionInSingleFile>-->
-    <Authors>1059 Studio</Authors>
+    <Authors>1059 Studio; FFmpegFreeUI API Extended Edition Contributors</Authors>
 	<Company>1059 Studio</Company>
-	<AssemblyVersion>6.1.30</AssemblyVersion>
-	<FileVersion>6.1.30</FileVersion>
-	<Version>6.1.30</Version>
+    <!-- 保持 FFmpegFreeUI.exe 文件名以兼容旧版插件和既有部署脚本；产品身份由 Product/PackageId 区分。 -->
+    <AssemblyName>FFmpegFreeUI</AssemblyName>
+    <Product>FFmpegFreeUI API Extended Edition</Product>
+    <PackageId>FFmpegFreeUI-API-Extended-Edition</PackageId>
+	<AssemblyVersion>6.1.30.1</AssemblyVersion>
+	<FileVersion>6.1.30.1</FileVersion>
+	<Version>6.1.30-ext.1+v2.2</Version>
+    <InformationalVersion>v6.1.30-ext.1+v2.2</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <ApplicationIcon>ico.ico</ApplicationIcon>
     <ApplicationManifest>My Project\app.manifest</ApplicationManifest>
-    <Title>FFmpegFreeUI</Title>
+    <Title>FFmpegFreeUI API Extended Edition</Title>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ForceDesignerDpiUnaware>true</ForceDesignerDpiUnaware>
   </PropertyGroup>
@@ -37,7 +43,7 @@
 
   <ItemGroup>
     <Compile Remove="Language\**" />
-    <Compile Remove="功能\插件扩展宿主_v2.vb" />
+    <Compile Remove="功能\Ext插件扩展宿主_v2.vb" />
     <EmbeddedResource Remove="Language\**" />
     <None Remove="Language\**" />
     <Page Remove="Language\**" />

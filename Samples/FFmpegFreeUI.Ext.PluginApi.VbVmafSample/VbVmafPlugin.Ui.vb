@@ -1,7 +1,7 @@
 Imports System.Drawing
 Imports System.Text.Json
 Imports System.Windows.Forms
-Imports FFmpegFreeUI.PluginSdk
+Imports FFmpegFreeUI.Ext.PluginSdk
 
 Partial Public NotInheritable Class VbVmafPlugin
     Private Shared ReadOnly 页面颜色 As Color = Color.FromArgb(24, 24, 24)
@@ -10,13 +10,13 @@ Partial Public NotInheritable Class VbVmafPlugin
     Private Shared ReadOnly 强调颜色 As Color = Color.FromArgb(70, 96, 180)
 
     ''' <summary>装饰型锚点必须返回 Nothing；这里添加无障碍说明并观察原生控件事件。</summary>
-    Private Function 创建质量模式装饰(context As IPluginUiContext) As Control
+    Private Function 创建质量模式装饰(context As IExtPluginUiContext) As Control
         Dim target = context.AnchorControl
-        target.AccessibleDescription = "可由 VB.NET Plugin API 综合示例配合使用的原生质量模式控件"
+        target.AccessibleDescription = "可由 VB.NET Ext Plugin API 综合示例配合使用的原生质量模式控件"
 
         Dim changed As EventHandler =
             Sub(sender, args)
-                写日志(PluginLogLevel.Trace, $"{context.SurfaceId} 的质量模式变为：{target.Text}")
+                写日志(ExtPluginLogLevel.Trace, $"{context.SurfaceId} 的质量模式变为：{target.Text}")
             End Sub
         AddHandler target.TextChanged, changed
         AddHandler target.Disposed, Sub(sender, args) RemoveHandler target.TextChanged, changed
@@ -24,20 +24,20 @@ Partial Public NotInheritable Class VbVmafPlugin
     End Function
 
     ''' <summary>第二个装饰型锚点展示 ExtensionId 和 AnchorId。</summary>
-    Private Shared Function 创建参数名装饰(context As IPluginUiContext) As Control
+    Private Shared Function 创建参数名装饰(context As IExtPluginUiContext) As Control
         context.AnchorControl.AccessibleDescription =
             $"扩展 {context.ExtensionId} 正在装饰锚点 {context.AnchorId}"
         Return Nothing
     End Function
 
     ''' <summary>第三个装饰型锚点只依赖 WinForms Control 公共成员，不绑定 LakeUI 具体类型。</summary>
-    Private Shared Function 创建质量值装饰(context As IPluginUiContext) As Control
+    Private Shared Function 创建质量值装饰(context As IExtPluginUiContext) As Control
         context.AnchorControl.AccessibleName = "原生质量值（支持插件策略）"
         Return Nothing
     End Function
 
     ''' <summary>插入下拉框、输入框和按钮，并通过 StateJson 随预设保存。</summary>
-    Private Shared Function 创建质量策略行(context As IPluginUiContext) As Control
+    Private Shared Function 创建质量策略行(context As IExtPluginUiContext) As Control
         Dim row = 创建行(54)
         Dim title = 创建标签("示例质量策略", 135)
         Dim mode = 创建下拉框(190, "不介入原生参数", "任务开始前填写 CRF")
@@ -54,9 +54,9 @@ Partial Public NotInheritable Class VbVmafPlugin
         row.Controls.AddRange(New Control() {title, mode, crf, applyButton, identity})
 
         ' ContainerControl 对插入型锚点非空；GetAnchorControl 可取得同一参数面板中的公开锚点。
-        Dim nativeMode = context.GetAnchorControl(ThreeFuiUiAnchors.ParametersVideoQualityMode)
-        Dim nativeName = context.GetAnchorControl(ThreeFuiUiAnchors.ParametersVideoQualityParameterName)
-        Dim nativeValue = context.GetAnchorControl(ThreeFuiUiAnchors.ParametersVideoQualityValue)
+        Dim nativeMode = context.GetAnchorControl(ExtFFmpegFreeUIUiAnchors.ParametersVideoQualityMode)
+        Dim nativeName = context.GetAnchorControl(ExtFFmpegFreeUIUiAnchors.ParametersVideoQualityParameterName)
+        Dim nativeValue = context.GetAnchorControl(ExtFFmpegFreeUIUiAnchors.ParametersVideoQualityValue)
         identity.Text =
             $"Plugin={context.PluginId}；Surface={context.SurfaceId}；" &
             $"容器={If(context.ContainerControl?.GetType().Name, "无")}"
@@ -101,7 +101,7 @@ Partial Public NotInheritable Class VbVmafPlugin
     End Function
 
     ''' <summary>第二个插入型锚点展示同一插件多个扩展共享 StateJson。</summary>
-    Private Shared Function 创建命令选项行(context As IPluginUiContext) As Control
+    Private Shared Function 创建命令选项行(context As IExtPluginUiContext) As Control
         Dim panel = 创建行(88)
         panel.FlowDirection = FlowDirection.TopDown
         Dim firstLine = 创建行(34)
@@ -165,7 +165,7 @@ Partial Public NotInheritable Class VbVmafPlugin
     End Function
 
     ''' <summary>第三个插入型锚点控制 VMAF 后处理，并展示显式刷新。</summary>
-    Private Shared Function 创建后处理行(context As IPluginUiContext) As Control
+    Private Shared Function 创建后处理行(context As IExtPluginUiContext) As Control
         Dim row = 创建行(48)
         Dim vmaf As New CheckBox With {
             .AutoSize = True,

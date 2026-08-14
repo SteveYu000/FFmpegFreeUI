@@ -3,20 +3,20 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.0.11010.61
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "FFmpegFreeUI", "FFmpegFreeUI\FFmpegFreeUI.vbproj", "{106AF5C4-8109-4E33-BEDC-D5919A9B53C0}"
+Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "FFmpegFreeUI API Extended Edition", "FFmpegFreeUI\FFmpegFreeUI.vbproj", "{106AF5C4-8109-4E33-BEDC-D5919A9B53C0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0638E848-40D7-4F53-84EF-EAE712FB7877}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FFmpegFreeUI.PluginSdk", "FFmpegFreeUI.PluginSdk\FFmpegFreeUI.PluginSdk.csproj", "{9A2F2807-7D50-4B58-A38B-E3453E9816EE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FFmpegFreeUI.Ext.PluginSdk", "FFmpegFreeUI.Ext.PluginSdk\FFmpegFreeUI.Ext.PluginSdk.csproj", "{9A2F2807-7D50-4B58-A38B-E3453E9816EE}"
 EndProject
-Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "FFmpegFreeUI.PluginHost", "FFmpegFreeUI.PluginHost\FFmpegFreeUI.PluginHost.vbproj", "{93E797B2-1196-4775-B10D-93F9B4C55270}"
+Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "FFmpegFreeUI.Ext.PluginHost", "FFmpegFreeUI.Ext.PluginHost\FFmpegFreeUI.Ext.PluginHost.vbproj", "{93E797B2-1196-4775-B10D-93F9B4C55270}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThreeFui.PluginApi.Sample", "Samples\ThreeFui.PluginApi.Sample\ThreeFui.PluginApi.Sample.csproj", "{D916B56F-C201-462B-868D-89270DCBAE4A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FFmpegFreeUI.Ext.PluginApi.Sample", "Samples\FFmpegFreeUI.Ext.PluginApi.Sample\FFmpegFreeUI.Ext.PluginApi.Sample.csproj", "{D916B56F-C201-462B-868D-89270DCBAE4A}"
 EndProject
-Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "ThreeFui.PluginApi.VbVmafSample", "Samples\ThreeFui.PluginApi.VbVmafSample\ThreeFui.PluginApi.VbVmafSample.vbproj", "{2F6C00DF-601F-48E2-813B-8D819678C8DB}"
+Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "FFmpegFreeUI.Ext.PluginApi.VbVmafSample", "Samples\FFmpegFreeUI.Ext.PluginApi.VbVmafSample\FFmpegFreeUI.Ext.PluginApi.VbVmafSample.vbproj", "{2F6C00DF-601F-48E2-813B-8D819678C8DB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

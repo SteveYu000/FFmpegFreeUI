@@ -7,17 +7,17 @@ Imports System.Text.Json
 Imports System.Threading
 
 ''' <summary>界面扩展相对于原生锚点的布局方式。</summary>
-Public Enum 插件界面锚点位置_v2
+Public Enum Ext插件界面锚点位置_v2
     在目标之前
     在目标之后
     装饰目标控件
 End Enum
 
 ''' <summary>
-''' 3FUI 核心与可选插件宿主之间传递的中立上下文。
-''' 此类型不引用 Plugin SDK，因此缺少 SDK 时核心处理链仍可正常运行。
+''' FFmpegFreeUI 核心与可选插件宿主之间传递的中立上下文。
+''' 此类型不引用 Ext Plugin SDK，因此缺少 SDK 时核心处理链仍可正常运行。
 ''' </summary>
-Public NotInheritable Class 插件管线上下文_v2
+Public NotInheritable Class Ext插件管线上下文_v2
     Public Property StageId As String = ""
     Public Property PresetJson As String = ""
     Public Property InputPath As String = ""
@@ -44,43 +44,65 @@ Public NotInheritable Class 插件管线上下文_v2
 End Class
 
 ''' <summary>核心内部使用的稳定 UI 锚点 ID。</summary>
-Friend Module 插件界面锚点_v2
-    Friend Const 视频质量控制方式 As String = "parameters.video.quality.mode"
-    Friend Const 视频质量参数名 As String = "parameters.video.quality.parameter-name"
-    Friend Const 视频质量值 As String = "parameters.video.quality.value"
-    Friend Const 全局质量控制之后 As String = "parameters.video.quality.global.after"
-    Friend Const 进阶质量控制之前 As String = "parameters.video.quality.advanced.before"
-    Friend Const 视频质量页底部 As String = "parameters.video.quality.page.bottom"
+Friend Module Ext插件界面锚点_v2
+    Friend Const 视频质量控制方式 As String = "ext.parameters.video.quality.mode"
+    Friend Const 视频质量参数名 As String = "ext.parameters.video.quality.parameter-name"
+    Friend Const 视频质量值 As String = "ext.parameters.video.quality.value"
+    Friend Const 全局质量控制之后 As String = "ext.parameters.video.quality.global.after"
+    Friend Const 进阶质量控制之前 As String = "ext.parameters.video.quality.advanced.before"
+    Friend Const 视频质量页底部 As String = "ext.parameters.video.quality.page.bottom"
+End Module
+
+''' <summary>核心与可选宿主共同使用的原生下拉项稳定 ID。</summary>
+Friend Module Ext插件界面选项_v2
+    Friend Const 视频质量未选择 As String = "ext.video-quality.none"
+    Friend Const 视频质量CRF As String = "ext.video-quality.crf"
+    Friend Const 视频质量VBR As String = "ext.video-quality.vbr"
+    Friend Const 视频质量CQP As String = "ext.video-quality.cqp"
+    Friend Const 视频质量CBR As String = "ext.video-quality.cbr"
+    Friend Const 视频质量TPE As String = "ext.video-quality.tpe"
 End Module
 
 ''' <summary>核心内部使用的稳定处理阶段 ID。</summary>
-Friend Module 插件处理阶段_v2
-    Friend Const 捕获预设之前 As String = "preset.before-capture"
-    Friend Const 捕获预设之后 As String = "preset.after-capture"
-    Friend Const 应用预设之前 As String = "preset.before-apply"
-    Friend Const 应用预设之后 As String = "preset.after-apply"
-    Friend Const 加入队列之前 As String = "queue.before-add"
-    Friend Const 准备任务之前 As String = "task.before-prepare"
-    Friend Const 准备任务之后 As String = "task.after-prepare"
-    Friend Const 构建命令之前 As String = "command.before-build"
-    Friend Const 构建命令之后 As String = "command.after-build"
-    Friend Const 启动进程之前 As String = "process.before-start"
-    Friend Const 进程退出之后 As String = "process.after-exit"
-    Friend Const 任务成功之后 As String = "task.after-complete"
-    Friend Const 任务失败之后 As String = "task.after-failed"
-    Friend Const 任务结束之后 As String = "task.after-finish"
+Friend Module Ext插件处理阶段_v2
+    Friend Const 捕获预设之前 As String = "ext.preset.before-capture"
+    Friend Const 捕获预设之后 As String = "ext.preset.after-capture"
+    Friend Const 应用预设之前 As String = "ext.preset.before-apply"
+    Friend Const 应用预设之后 As String = "ext.preset.after-apply"
+    Friend Const 加入队列之前 As String = "ext.queue.before-add"
+    Friend Const 准备任务之前 As String = "ext.task.before-prepare"
+    Friend Const 准备任务之后 As String = "ext.task.after-prepare"
+    Friend Const 构建命令之前 As String = "ext.command.before-build"
+    Friend Const 构建命令之后 As String = "ext.command.after-build"
+    Friend Const 启动进程之前 As String = "ext.process.before-start"
+    Friend Const 进程退出之后 As String = "ext.process.after-exit"
+    Friend Const 任务成功之后 As String = "ext.task.after-complete"
+    Friend Const 任务失败之后 As String = "ext.task.after-failed"
+    Friend Const 任务结束之后 As String = "ext.task.after-finish"
 End Module
 
+''' <summary>核心内部使用的稳定行为点 ID。</summary>
+Friend Module Ext插件行为点_v2
+    Friend Const 视频质量模式已变更 As String = "ext.parameters.video.quality.mode.changed"
+End Module
+
+''' <summary>核心与可选宿主之间传递的行为点上下文。</summary>
+Public NotInheritable Class Ext插件行为上下文_v2
+    Public Property BehaviorId As String = ""
+    Public Property SurfaceId As String = ""
+    Public ReadOnly Property Properties As New Dictionary(Of String, String)(StringComparer.OrdinalIgnoreCase)
+End Class
+
 ''' <summary>
-''' 可选 Plugin API 的核心桥接层。核心只依赖本模块；只有同时检测到 SDK 与插件宿主时，
+''' 可选 Ext Plugin API 的核心桥接层。核心只依赖本模块；只有同时检测到 SDK 与插件宿主时，
 ''' 才会通过反射进入引用 SDK 的实现程序集。
 ''' </summary>
-Friend Module 插件扩展桥接_v2
-    Private Const SDK文件名 As String = "FFmpegFreeUI.PluginSdk.dll"
-    Private Const 宿主文件名 As String = "FFmpegFreeUI.PluginHost.dll"
-    Private Const 宿主类型名 As String = "FFmpegFreeUI.插件扩展宿主_v2"
-    Private ReadOnly SDK最低版本 As New Version(2, 1, 0)
-    Private ReadOnly 宿主最低版本 As New Version(2, 1, 0)
+Friend Module Ext插件扩展桥接_v2
+    Private Const SDK文件名 As String = "FFmpegFreeUI.Ext.PluginSdk.dll"
+    Private Const 宿主文件名 As String = "FFmpegFreeUI.Ext.PluginHost.dll"
+    Private Const 宿主类型名 As String = "FFmpegFreeUI.Ext插件扩展宿主_v2"
+    Private ReadOnly SDK最低版本 As New Version(2, 2, 0)
+    Private ReadOnly 宿主最低版本 As New Version(2, 2, 0)
 
     Private ReadOnly 初始化锁 As New Object
     Private ReadOnly 方法缓存 As New Dictionary(Of String, MethodInfo)(StringComparer.Ordinal)
@@ -94,15 +116,15 @@ Friend Module 插件扩展桥接_v2
         End Get
     End Property
 
-    Friend Function 尝试加载v2插件(程序集 As Assembly) As Boolean
+    Friend Function 尝试加载Ext插件(程序集 As Assembly) As Boolean
         If 程序集 Is Nothing OrElse Not 可用 Then Return False
-        Return CBool(调用宿主(NameOf(尝试加载v2插件), 程序集))
+        Return CBool(调用宿主(NameOf(尝试加载Ext插件), 程序集))
     End Function
 
     Friend Sub 注册界面锚点(anchorId As String,
                          anchorControl As Control,
                          surface As Control,
-                         position As 插件界面锚点位置_v2)
+                         position As Ext插件界面锚点位置_v2)
         If Not 可用 Then Exit Sub
         调用宿主(NameOf(注册界面锚点), anchorId, anchorControl, surface, position)
     End Sub
@@ -117,15 +139,27 @@ Friend Module 插件扩展桥接_v2
         Return DirectCast(调用宿主(NameOf(捕获参数面板插件状态), surface), Dictionary(Of String, String))
     End Function
 
-    Friend Sub 执行同步阶段(stageId As String, context As 插件管线上下文_v2)
+    Friend Sub 执行同步阶段(stageId As String, context As Ext插件管线上下文_v2)
         If context Is Nothing Then Throw New ArgumentNullException(NameOf(context))
         context.StageId = stageId
         If Not 可用 Then Exit Sub
         调用宿主(NameOf(执行同步阶段), stageId, context)
     End Sub
 
+    Friend Sub 执行行为点(behaviorId As String,
+                      context As Ext插件行为上下文_v2,
+                      nativeAction As Action(Of Ext插件行为上下文_v2))
+        If context Is Nothing Then Throw New ArgumentNullException(NameOf(context))
+        context.BehaviorId = behaviorId
+        If Not 可用 Then
+            nativeAction?.Invoke(context)
+            Exit Sub
+        End If
+        调用宿主(NameOf(执行行为点), behaviorId, context, nativeAction)
+    End Sub
+
     Friend Function 执行异步阶段Async(stageId As String,
-                                 context As 插件管线上下文_v2,
+                                 context As Ext插件管线上下文_v2,
                                  cancellationToken As CancellationToken) As Task
         If context Is Nothing Then Throw New ArgumentNullException(NameOf(context))
         context.StageId = stageId
@@ -136,8 +170,8 @@ Friend Module 插件扩展桥接_v2
     Friend Function 创建预设管线上下文(stageId As String,
                                   preset As 预设数据_v6,
                                   Optional surface As Control = Nothing,
-                                  Optional isPreview As Boolean = False) As 插件管线上下文_v2
-        Return New 插件管线上下文_v2 With {
+                                  Optional isPreview As Boolean = False) As Ext插件管线上下文_v2
+        Return New Ext插件管线上下文_v2 With {
             .StageId = stageId,
             .PresetJson = 序列化预设(preset),
             .SurfaceId = 获取界面标识(surface),
@@ -145,9 +179,9 @@ Friend Module 插件扩展桥接_v2
         }
     End Function
 
-    Friend Function 创建任务管线上下文(stageId As String, task As 编码任务_v6) As 插件管线上下文_v2
+    Friend Function 创建任务管线上下文(stageId As String, task As 编码任务_v6) As Ext插件管线上下文_v2
         If task Is Nothing Then Throw New ArgumentNullException(NameOf(task))
-        Dim result = New 插件管线上下文_v2 With {
+        Dim result = New Ext插件管线上下文_v2 With {
             .StageId = stageId,
             .PresetJson = 序列化预设(task.预设数据),
             .InputPath = If(task.输入文件, ""),
@@ -170,7 +204,7 @@ Friend Module 插件扩展桥接_v2
         Return result
     End Function
 
-    Friend Sub 应用任务管线上下文(task As 编码任务_v6, context As 插件管线上下文_v2)
+    Friend Sub 应用任务管线上下文(task As 编码任务_v6, context As Ext插件管线上下文_v2)
         If task Is Nothing OrElse context Is Nothing Then Exit Sub
         If task.预设数据 IsNot Nothing OrElse Not String.IsNullOrWhiteSpace(context.PresetJson) Then
             task.预设数据 = 反序列化预设(context.PresetJson, task.预设数据)
@@ -199,15 +233,19 @@ Friend Module 插件扩展桥接_v2
         Return CStr(调用宿主(NameOf(获取界面标识), surface))
     End Function
 
+    Friend Function 获取参数面板标识(surface As Control) As String
+        Return 获取界面标识(surface)
+    End Function
+
     Private Sub 报告任务插件进度(task As 编码任务_v6, stageId As String, message As String, fraction As Double?)
         If task Is Nothing Then Exit Sub
         If fraction.HasValue Then
             task.进度.百分比 = Math.Min(Math.Max(fraction.Value, 0), 1)
             task.进度.进度文本 = $"{task.进度.百分比:P0}"
         End If
-        If String.Equals(stageId, 插件处理阶段_v2.任务成功之后, StringComparison.Ordinal) Then
+        If String.Equals(stageId, Ext插件处理阶段_v2.任务成功之后, StringComparison.Ordinal) Then
             task.进度.当前阶段 = "插件后处理"
-        ElseIf stageId.StartsWith("task.", StringComparison.Ordinal) Then
+        ElseIf stageId.StartsWith("ext.task.", StringComparison.Ordinal) Then
             task.进度.当前阶段 = "插件任务处理"
         Else
             task.进度.当前阶段 = "插件处理"
@@ -241,33 +279,37 @@ Friend Module 插件扩展桥接_v2
             Dim sdkPath = Path.Combine(AppContext.BaseDirectory, SDK文件名)
             Dim hostPath = Path.Combine(AppContext.BaseDirectory, 宿主文件名)
             If Not File.Exists(sdkPath) Then
-                Debug.WriteLine($"[3FUI Plugin] 未检测到 {SDK文件名}，Plugin API v2 已禁用。")
+                Debug.WriteLine($"[FFmpegFreeUI Ext Plugin] 未检测到 {SDK文件名}，Ext Plugin API v2 已禁用。")
                 Exit Sub
             End If
             If Not File.Exists(hostPath) Then
-                Debug.WriteLine($"[3FUI Plugin] 未检测到 {宿主文件名}，Plugin API v2 已禁用。")
+                Debug.WriteLine($"[FFmpegFreeUI Ext Plugin] 未检测到 {宿主文件名}，Ext Plugin API v2 已禁用。")
                 Exit Sub
             End If
 
             Try
                 Dim sdkAssembly = Assembly.LoadFrom(sdkPath)
-                Dim apiType = sdkAssembly.GetType("FFmpegFreeUI.PluginSdk.ThreeFuiPluginApi", throwOnError:=True, ignoreCase:=False)
+                Dim apiType = sdkAssembly.GetType("FFmpegFreeUI.Ext.PluginSdk.ExtFFmpegFreeUIPluginApi", throwOnError:=True, ignoreCase:=False)
                 Dim versionProperty = apiType.GetProperty("Version", BindingFlags.Public Or BindingFlags.Static)
                 Dim sdkVersion = TryCast(versionProperty?.GetValue(Nothing), Version)
                 If sdkVersion Is Nothing OrElse sdkVersion.Major <> SDK最低版本.Major OrElse sdkVersion < SDK最低版本 Then
-                    Debug.WriteLine($"[3FUI Plugin] {SDK文件名} 版本不兼容，需要 2.1.x 或更高的 2.x 版本。")
+                    Debug.WriteLine($"[FFmpegFreeUI Ext Plugin] {SDK文件名} 版本不兼容，需要 2.2.x 或更高的 2.x 版本。")
                     Exit Sub
                 End If
                 Dim hostAssembly = Assembly.LoadFrom(hostPath)
                 Dim hostVersion = hostAssembly.GetName().Version
                 If hostVersion Is Nothing OrElse hostVersion.Major <> 宿主最低版本.Major OrElse hostVersion < 宿主最低版本 Then
-                    Debug.WriteLine($"[3FUI Plugin] {宿主文件名} 版本不兼容，需要 2.1.x 或更高的 2.x 版本。")
+                    Debug.WriteLine($"[FFmpegFreeUI Ext Plugin] {宿主文件名} 版本不兼容，需要 2.2.x 或更高的 2.x 版本。")
+                    Exit Sub
+                End If
+                If sdkVersion.Major <> hostVersion.Major OrElse sdkVersion.Minor <> hostVersion.Minor Then
+                    Debug.WriteLine($"[FFmpegFreeUI Ext Plugin] SDK {sdkVersion} 与 Host {hostVersion} 能力版本不一致，Ext Plugin API v2 已禁用。")
                     Exit Sub
                 End If
                 宿主类型 = hostAssembly.GetType(宿主类型名, throwOnError:=True, ignoreCase:=False)
             Catch ex As Exception
                 宿主类型 = Nothing
-                Debug.WriteLine($"[3FUI Plugin] Plugin API v2 初始化失败，已安全禁用：{ex}")
+                Debug.WriteLine($"[FFmpegFreeUI Ext Plugin] Ext Plugin API v2 初始化失败，已安全禁用：{ex}")
             End Try
         End SyncLock
     End Sub

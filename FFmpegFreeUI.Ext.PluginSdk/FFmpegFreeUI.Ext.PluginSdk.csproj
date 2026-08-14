@@ -7,12 +7,15 @@
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
-    <AssemblyName>FFmpegFreeUI.PluginSdk</AssemblyName>
-    <RootNamespace>FFmpegFreeUI.PluginSdk</RootNamespace>
-    <Version>2.1.0</Version>
+    <AssemblyName>FFmpegFreeUI.Ext.PluginSdk</AssemblyName>
+    <RootNamespace>FFmpegFreeUI.Ext.PluginSdk</RootNamespace>
+    <Product>FFmpegFreeUI API Extended Edition Ext Plugin SDK</Product>
+    <PackageId>FFmpegFreeUI.Ext.PluginSdk</PackageId>
+    <Description>FFmpegFreeUI API Extended Edition 的 Ext Plugin API 公共合同。</Description>
+    <Version>2.2.0</Version>
     <!-- 2.x 仅追加契约成员，保持程序集版本可兼容已编译的 2.0 插件。 -->
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
-    <FileVersion>2.1.0.0</FileVersion>
+    <FileVersion>2.2.0.0</FileVersion>
   </PropertyGroup>
 
 </Project>

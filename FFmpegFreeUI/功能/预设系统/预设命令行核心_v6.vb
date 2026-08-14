@@ -121,17 +121,17 @@ Partial Public Class 预设管理_v6
         If a Is Nothing Then Return 结果
         初始化空集合(a)
 
-        Dim beforeBuild As New 插件管线上下文_v2 With {
-            .StageId = 插件处理阶段_v2.构建命令之前,
-            .PresetJson = 插件扩展桥接_v2.序列化预设(a),
+        Dim beforeBuild As New Ext插件管线上下文_v2 With {
+            .StageId = Ext插件处理阶段_v2.构建命令之前,
+            .PresetJson = Ext插件扩展桥接_v2.序列化预设(a),
             .InputPath = If(输入文件, ""),
             .OutputPath = If(输出文件, ""),
             .TaskId = If(帧服务器脚本后缀, ""),
             .PhaseName = 阶段.ToString(),
             .IsPreview = String.IsNullOrWhiteSpace(帧服务器脚本后缀)
         }
-        插件扩展桥接_v2.执行同步阶段(插件处理阶段_v2.构建命令之前, beforeBuild)
-        a = 插件扩展桥接_v2.反序列化预设(beforeBuild.PresetJson, a)
+        Ext插件扩展桥接_v2.执行同步阶段(Ext插件处理阶段_v2.构建命令之前, beforeBuild)
+        a = Ext插件扩展桥接_v2.反序列化预设(beforeBuild.PresetJson, a)
         输入文件 = beforeBuild.InputPath
         输出文件 = beforeBuild.OutputPath
 
@@ -232,9 +232,9 @@ Partial Public Class 预设管理_v6
                                       inputPath As String,
                                       outputPath As String,
                                       taskId As String) As 预设数据_v6.命令行生成结果
-        Dim afterBuild As New 插件管线上下文_v2 With {
-            .StageId = 插件处理阶段_v2.构建命令之后,
-            .PresetJson = 插件扩展桥接_v2.序列化预设(preset),
+        Dim afterBuild As New Ext插件管线上下文_v2 With {
+            .StageId = Ext插件处理阶段_v2.构建命令之后,
+            .PresetJson = Ext插件扩展桥接_v2.序列化预设(preset),
             .InputPath = If(inputPath, ""),
             .OutputPath = If(outputPath, ""),
             .CommandLine = If(result.命令行, ""),
@@ -242,7 +242,7 @@ Partial Public Class 预设管理_v6
             .PhaseName = result.阶段.ToString(),
             .IsPreview = String.IsNullOrWhiteSpace(taskId)
         }
-        插件扩展桥接_v2.执行同步阶段(插件处理阶段_v2.构建命令之后, afterBuild)
+        Ext插件扩展桥接_v2.执行同步阶段(Ext插件处理阶段_v2.构建命令之后, afterBuild)
         result.命令行 = If(afterBuild.CommandLine, "")
         Return result
     End Function

@@ -6,12 +6,12 @@ Imports System.Text.Json
 Imports System.Text.Json.Nodes
 Imports System.Threading
 Imports System.Threading.Tasks
-Imports FFmpegFreeUI.PluginSdk
+Imports FFmpegFreeUI.Ext.PluginSdk
 
 Partial Public NotInheritable Class VbVmafPlugin
-    ' preset.before-apply：原生控件接收预设前迁移插件状态。
+    ' ext.preset.before-apply：原生控件接收预设前迁移插件状态。
     Private Function 应用预设前(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         cancellationToken.ThrowIfCancellationRequested()
@@ -20,24 +20,24 @@ Partial Public NotInheritable Class VbVmafPlugin
             pair.状态.Version = 2
             写入状态(pair.预设, pair.状态)
             写回预设(context, pair.预设)
-            写日志(PluginLogLevel.Information, $"已在 {context.SurfaceId} 迁移示例状态到版本 2")
+            写日志(ExtPluginLogLevel.Information, $"已在 {context.SurfaceId} 迁移示例状态到版本 2")
         End If
         Return ValueTask.CompletedTask
     End Function
 
-    ' preset.after-apply：原生映射已结束，适合观察；此时改 JSON 不会让界面重新映射。
+    ' ext.preset.after-apply：原生映射已结束，适合观察；此时改 JSON 不会让界面重新映射。
     Private Function 应用预设后(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         cancellationToken.ThrowIfCancellationRequested()
-        写日志(PluginLogLevel.Trace, $"预设已应用：stage={context.StageId}, surface={context.SurfaceId}")
+        写日志(ExtPluginLogLevel.Trace, $"预设已应用：stage={context.StageId}, surface={context.SurfaceId}")
         Return ValueTask.CompletedTask
     End Function
 
-    ' preset.before-capture：随后原生控件会覆盖自己拥有的字段，这里只保存辅助状态。
+    ' ext.preset.before-capture：随后原生控件会覆盖自己拥有的字段，这里只保存辅助状态。
     Private Function 捕获预设前(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         cancellationToken.ThrowIfCancellationRequested()
@@ -48,9 +48,9 @@ Partial Public NotInheritable Class VbVmafPlugin
         Return ValueTask.CompletedTask
     End Function
 
-    ' preset.after-capture：原生字段捕获完成，是最终覆盖质量参数的可靠位置。
+    ' ext.preset.after-capture：原生字段捕获完成，是最终覆盖质量参数的可靠位置。
     Private Function 捕获预设后(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         cancellationToken.ThrowIfCancellationRequested()
@@ -62,9 +62,9 @@ Partial Public NotInheritable Class VbVmafPlugin
         Return ValueTask.CompletedTask
     End Function
 
-    ' queue.before-add：快速修改任务快照和 Properties("taskName")，不可在同步阶段执行耗时 I/O。
+    ' ext.queue.before-add：快速修改任务快照和 Properties("taskName")，不可在同步阶段执行耗时 I/O。
     Private Function 加入队列前(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         cancellationToken.ThrowIfCancellationRequested()
@@ -84,15 +84,15 @@ Partial Public NotInheritable Class VbVmafPlugin
 
     ' VB.NET 的 Async Function 不能直接返回 ValueTask，所以所有真正异步的方法使用轻量适配器。
     Private Function 准备任务前Async(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         Return New ValueTask(准备任务前核心Async(context, cancellationToken))
     End Function
 
-    ' task.before-prepare：可取消的媒体分析或网络查询放在这里；改预设后宿主据此构建步骤。
+    ' ext.task.before-prepare：可取消的媒体分析或网络查询放在这里；改预设后宿主据此构建步骤。
     Private Async Function 准备任务前核心Async(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As Task
 
         Dim state = 尝试读取状态(context.PresetJson)
@@ -115,9 +115,9 @@ Partial Public NotInheritable Class VbVmafPlugin
         context.ReportProgress($"示例质量值已确定为 CRF {pair.状态.Crf}", 0.25)
     End Function
 
-    ' command.before-build：结构化修改 JSON；预览和每个真实步骤都会调用，必须幂等。
+    ' ext.command.before-build：结构化修改 JSON；预览和每个真实步骤都会调用，必须幂等。
     Private Function 构建命令前(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         cancellationToken.ThrowIfCancellationRequested()
@@ -133,13 +133,13 @@ Partial Public NotInheritable Class VbVmafPlugin
         pair.预设("视频参数_质量控制_进阶参数集") =
             追加一次(current, state.AdvancedArguments)
         写回预设(context, pair.预设)
-        写日志(PluginLogLevel.Trace, $"结构化命令调整：phase={context.PhaseName}, preview={context.IsPreview}")
+        写日志(ExtPluginLogLevel.Trace, $"结构化命令调整：phase={context.PhaseName}, preview={context.IsPreview}")
         Return ValueTask.CompletedTask
     End Function
 
-    ' command.after-build：只能修改最终参数字符串；这里用可重复调用的方式前置全局参数。
+    ' ext.command.after-build：只能修改最终参数字符串；这里用可重复调用的方式前置全局参数。
     Private Function 构建命令后(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         cancellationToken.ThrowIfCancellationRequested()
@@ -151,15 +151,15 @@ Partial Public NotInheritable Class VbVmafPlugin
     End Function
 
     Private Function 准备任务后Async(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         Return New ValueTask(准备任务后核心Async(context, cancellationToken))
     End Function
 
-    ' task.after-prepare：全部步骤首次生成后验证；修改任务数据会使宿主重建步骤。
+    ' ext.task.after-prepare：全部步骤首次生成后验证；修改任务数据会使宿主重建步骤。
     Private Async Function 准备任务后核心Async(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As Task
 
         Dim state = 尝试读取状态(context.PresetJson)
@@ -174,7 +174,7 @@ Partial Public NotInheritable Class VbVmafPlugin
     End Function
 
     Private Function 启动进程前Async(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         cancellationToken.ThrowIfCancellationRequested()
@@ -199,9 +199,9 @@ Partial Public NotInheritable Class VbVmafPlugin
         Return ValueTask.CompletedTask
     End Function
 
-    ' process.after-exit：观察或按明确协议校正单步骤退出码；它不代表整个任务结束。
+    ' ext.process.after-exit：观察或按明确协议校正单步骤退出码；它不代表整个任务结束。
     Private Function 进程退出后Async(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         cancellationToken.ThrowIfCancellationRequested()
@@ -218,15 +218,15 @@ Partial Public NotInheritable Class VbVmafPlugin
     End Function
 
     Private Function 任务成功后Async(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         Return New ValueTask(任务成功后核心Async(context, cancellationToken))
     End Function
 
-    ' task.after-complete：适合可取消的成功后处理；示例实际调用 ffmpeg/libvmaf。
+    ' ext.task.after-complete：适合可取消的成功后处理；示例实际调用 ffmpeg/libvmaf。
     Private Async Function 任务成功后核心Async(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As Task
 
         Dim state = 尝试读取状态(context.PresetJson)
@@ -249,9 +249,9 @@ Partial Public NotInheritable Class VbVmafPlugin
         context.ReportProgress($"VMAF：{scoreText}", 1)
     End Function
 
-    ' task.after-failed：只读诊断并上报；该阶段使用不可取消令牌，应快速返回。
+    ' ext.task.after-failed：只读诊断并上报；该阶段使用不可取消令牌，应快速返回。
     Private Function 任务失败后Async(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         If Not 是否启用任何功能(尝试读取状态(context.PresetJson)) Then
@@ -259,13 +259,13 @@ Partial Public NotInheritable Class VbVmafPlugin
         End If
 
         context.ReportResult("task.failure", context.TaskStatus.ToString(), "失败状态")
-        写日志(PluginLogLevel.Error, $"任务 {context.TaskId} 进入 {描述任务状态(context.TaskStatus)} 状态")
+        写日志(ExtPluginLogLevel.Error, $"任务 {context.TaskId} 进入 {描述任务状态(context.TaskStatus)} 状态")
         Return ValueTask.CompletedTask
     End Function
 
-    ' task.after-finish：成功、失败、取消都会运行；只做有界且幂等的缓存清理。
+    ' ext.task.after-finish：成功、失败、取消都会运行；只做有界且幂等的缓存清理。
     Private Function 任务结束后Async(
-        context As PluginPipelineContext,
+        context As ExtPluginPipelineContext,
         cancellationToken As CancellationToken) As ValueTask
 
         Dim session As 任务会话 = Nothing
@@ -318,15 +318,15 @@ Partial Public NotInheritable Class VbVmafPlugin
         Return $"{optionValue} {source}".TrimEnd()
     End Function
 
-    Private Shared Function 描述任务状态(status As PluginTaskStatus) As String
+    Private Shared Function 描述任务状态(status As ExtPluginTaskStatus) As String
         Select Case status
-            Case PluginTaskStatus.Unknown : Return "未知"
-            Case PluginTaskStatus.Pending : Return "等待中"
-            Case PluginTaskStatus.Running : Return "运行中"
-            Case PluginTaskStatus.Paused : Return "已暂停"
-            Case PluginTaskStatus.Succeeded : Return "成功"
-            Case PluginTaskStatus.Failed : Return "失败"
-            Case PluginTaskStatus.Canceled : Return "已取消"
+            Case ExtPluginTaskStatus.Unknown : Return "未知"
+            Case ExtPluginTaskStatus.Pending : Return "等待中"
+            Case ExtPluginTaskStatus.Running : Return "运行中"
+            Case ExtPluginTaskStatus.Paused : Return "已暂停"
+            Case ExtPluginTaskStatus.Succeeded : Return "成功"
+            Case ExtPluginTaskStatus.Failed : Return "失败"
+            Case ExtPluginTaskStatus.Canceled : Return "已取消"
             Case Else : Return status.ToString()
         End Select
     End Function
@@ -336,7 +336,7 @@ Partial Public NotInheritable Class VbVmafPlugin
         distortedPath As String,
         cancellationToken As CancellationToken) As Task(Of Double)
 
-        Dim resultPath = Path.Combine(Path.GetTempPath(), $"3fui-vmaf-{Guid.NewGuid():N}.json")
+        Dim resultPath = Path.Combine(Path.GetTempPath(), $"ffmpegfreeui-vmaf-{Guid.NewGuid():N}.json")
         Try
             Dim startInfo As New ProcessStartInfo With {
                 .FileName = "ffmpeg",

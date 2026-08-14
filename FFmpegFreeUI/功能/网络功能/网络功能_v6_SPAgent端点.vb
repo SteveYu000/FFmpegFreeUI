@@ -163,7 +163,7 @@ Friend NotInheritable Class 网络功能_v6_SPAgent端点
 
     Private Shared Async Function 获取SPAgent端点列表数据Async(cancellationToken As CancellationToken) As Task(Of List(Of 网络功能.AgentSpEndpointInfo))
         Using request As New HttpRequestMessage(HttpMethod.Get, SPAgent端点列表地址)
-            request.Headers.TryAddWithoutValidation("User-Agent", $"FFmpegFreeUI/{版本号.获取自身版本号}")
+            request.Headers.TryAddWithoutValidation("User-Agent", $"FFmpegFreeUI-API-Extended-Edition/{版本号.获取自身版本号}")
 
             Using response = Await SPAgent端点Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(False)
                 Dim raw As String = Await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(False)

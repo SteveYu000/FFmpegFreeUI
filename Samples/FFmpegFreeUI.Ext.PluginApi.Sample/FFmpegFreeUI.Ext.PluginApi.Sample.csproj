@@ -5,12 +5,12 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>ThreeFui.PluginApi.Sample.3fui</AssemblyName>
-    <RootNamespace>ThreeFui.PluginApi.Sample</RootNamespace>
+    <AssemblyName>FFmpegFreeUI.Ext.PluginApi.Sample.3fui</AssemblyName>
+    <RootNamespace>FFmpegFreeUI.Ext.PluginApi.Sample</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FFmpegFreeUI.PluginSdk\FFmpegFreeUI.PluginSdk.csproj">
+    <ProjectReference Include="..\..\FFmpegFreeUI.Ext.PluginSdk\FFmpegFreeUI.Ext.PluginSdk.csproj">
       <Private>false</Private>
     </ProjectReference>
   </ItemGroup>

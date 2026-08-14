@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <OptionExplicit>On</OptionExplicit>
+    <OptionInfer>On</OptionInfer>
+    <OptionStrict>On</OptionStrict>
+    <RootNamespace>FFmpegFreeUI</RootNamespace>
+    <AssemblyName>FFmpegFreeUI.Ext.PluginHost</AssemblyName>
+    <Version>2.2.0</Version>
+    <AssemblyVersion>2.2.0.0</AssemblyVersion>
+    <FileVersion>2.2.0.0</FileVersion>
+    <InformationalVersion>v2.2</InformationalVersion>
+    <Product>FFmpegFreeUI API Extended Edition Ext Plugin Host</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\FFmpegFreeUI\功能\Ext插件扩展宿主_v2.vb" Link="Ext插件扩展宿主_v2.vb" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FFmpegFreeUI\FFmpegFreeUI.vbproj" />
+    <ProjectReference Include="..\FFmpegFreeUI.Ext.PluginSdk\FFmpegFreeUI.Ext.PluginSdk.csproj" />
+  </ItemGroup>
+
+  <!-- Ext PluginHost 随宿主发行但保持休眠；SDK 仍按用户是否已安装来更新。 -->
+  <Target Name="CopyExtPluginHostToFFmpegFreeUIOutput" AfterTargets="Build">
+    <PropertyGroup>
+      <FFmpegFreeUIOutputDirectory>$(MSBuildThisFileDirectory)..\FFmpegFreeUI\bin\$(Configuration)\$(TargetFramework)\</FFmpegFreeUIOutputDirectory>
+      <!-- 旧 SDK 存在表示用户此前已启用扩展 API；本次构建将其一次性迁移到 Ext 程序集。 -->
+      <ExtSdkWasInstalled Condition="Exists('$(FFmpegFreeUIOutputDirectory)FFmpegFreeUI.Ext.PluginSdk.dll') Or Exists('$(FFmpegFreeUIOutputDirectory)FFmpegFreeUI.PluginSdk.dll')">true</ExtSdkWasInstalled>
+    </PropertyGroup>
+    <MakeDir Directories="$(FFmpegFreeUIOutputDirectory)" />
+    <Copy SourceFiles="$(TargetPath)"
+          DestinationFiles="$(FFmpegFreeUIOutputDirectory)FFmpegFreeUI.Ext.PluginHost.dll" />
+    <ItemGroup>
+      <BuiltExtPluginSdk Include="@(ReferenceCopyLocalPaths)"
+                         Condition="'%(Filename)' == 'FFmpegFreeUI.Ext.PluginSdk' and '%(Extension)' == '.dll'" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BuiltExtPluginSdk)"
+          DestinationFiles="$(FFmpegFreeUIOutputDirectory)FFmpegFreeUI.Ext.PluginSdk.dll"
+          Condition="'$(ExtSdkWasInstalled)' == 'true'" />
+    <!-- 不保留无 Ext 前缀的兼容垫片，避免与官方未来程序集身份冲突。 -->
+    <Delete Files="$(FFmpegFreeUIOutputDirectory)FFmpegFreeUI.PluginHost.dll;
+                   $(FFmpegFreeUIOutputDirectory)FFmpegFreeUI.PluginHost.pdb;
+                   $(FFmpegFreeUIOutputDirectory)FFmpegFreeUI.PluginSdk.dll;
+                   $(FFmpegFreeUIOutputDirectory)FFmpegFreeUI.PluginSdk.pdb;
+                   $(FFmpegFreeUIOutputDirectory)FFmpegFreeUI.PluginSdk.xml" />
+  </Target>
+
+</Project>

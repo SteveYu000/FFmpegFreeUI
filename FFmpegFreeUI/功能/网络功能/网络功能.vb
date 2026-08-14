@@ -45,6 +45,10 @@ Partial Public Class 网络功能
         网络功能_v6_新闻列表.获取新闻列表()
     End Sub
 
+    Public Shared Sub 启动时检查新版本()
+        网络功能_v6_软件版本检查.启动时检查新版本()
+    End Sub
+
     Public Shared Sub 创建一个新闻内容(标题 As String, 标题颜色 As String, 副标题 As String, 行为 As String, 内容 As String)
         网络功能_v6_新闻列表.创建一个新闻内容(标题, 标题颜色, 副标题, 行为, 内容)
     End Sub

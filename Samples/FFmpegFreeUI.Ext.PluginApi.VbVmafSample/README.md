@@ -1,4 +1,4 @@
-# VB.NET Plugin API v2.1 综合示例
+# VB.NET Ext Plugin API v2.2 综合示例
 
 本示例用三个可以独立启用的场景覆盖当前全部公共接口：
 
@@ -15,15 +15,19 @@
 
 ## 接口覆盖
 
-- `IThreeFuiPlugin`：`Id`、`DisplayName`、`Initialize`。
-- `IThreeFuiHost`：`ApiVersion`、`HostVersion`、`Ui`、`Pipeline`、4 种 `Log` 级别。
-- `IPluginUiRegistry`：`AvailableAnchors`、`Register`、注册句柄保存。
-- `IPluginUiContext`：全部身份字段、两个控件字段、`GetAnchorControl`、`StateJson`、
+- `RegisterChoice`：用稳定 `ChoiceId` 向原生质量下拉框添加安全选项，不直接修改 `Items`。
+- `Behaviors.Register`：在原生质量模式联动之后进行有序观察/变换。
+- `Resources.Claim`：声明对原始控件的观察意图，展示冲突协调入口。
+
+- `IExtFFmpegFreeUIPlugin`：`Id`、`DisplayName`、`Initialize`。
+- `IExtFFmpegFreeUIHost`：`ApiVersion`、`HostVersion`、`Ui`、`Pipeline`、4 种 `Log` 级别。
+- `IExtPluginUiRegistry`：`AvailableAnchors`、`Register`、注册句柄保存。
+- `IExtPluginUiContext`：全部身份字段、两个控件字段、`GetAnchorControl`、`StateJson`、
   `StateRestored`、`RequestParameterRefresh`。
-- `IPluginPipelineRegistry`：`AvailableStages`、`Register` 和 `Order`。
-- `PluginPipelineContext`：全部字段、阶段属性、取消令牌、`ReportProgress`、`ReportResult`。
-- `ThreeFuiUiAnchors.All` 中的 6 个锚点。
-- `ThreeFuiPipelineStages.All` 中的 14 个阶段。
+- `IExtPluginPipelineRegistry`：`AvailableStages`、`Register` 和 `Order`。
+- `ExtPluginPipelineContext`：全部字段、阶段属性、取消令牌、`ReportProgress`、`ReportResult`。
+- `ExtFFmpegFreeUIUiAnchors.All` 中的 6 个锚点。
+- `ExtFFmpegFreeUIPipelineStages.All` 中的 14 个阶段。
 
 示例中的命令字符串修改只用于解释接口。生产插件应使用可靠的参数解析/转义方式，并谨慎提供“接受非零
 退出码”或“替换进程”这类高风险选项。VMAF 示例假设参考和编码文件已有可比较的尺寸、帧率、时长、
@@ -34,8 +38,8 @@
 在仓库根目录执行：
 
 ```powershell
-dotnet build .\Samples\ThreeFui.PluginApi.VbVmafSample\ThreeFui.PluginApi.VbVmafSample.vbproj -c Release
+dotnet build .\Samples\FFmpegFreeUI.Ext.PluginApi.VbVmafSample\FFmpegFreeUI.Ext.PluginApi.VbVmafSample.vbproj -c Release
 ```
 
-只把生成的 `ThreeFui.PluginApi.VbVmafSample.3fui.dll` 放到 3FUI 的 `Plugin` 目录。不要复制构建目录中的
-`FFmpegFreeUI.PluginSdk.dll`；SDK 和 PluginHost 应由 3FUI 发行包统一放在程序根目录。
+只把生成的 `FFmpegFreeUI.Ext.PluginApi.VbVmafSample.3fui.dll` 放到 FFmpegFreeUI 的 `Plugin` 目录。不要复制构建目录中的
+`FFmpegFreeUI.Ext.PluginSdk.dll`；SDK 和 PluginHost 应由 FFmpegFreeUI 发行包统一放在程序根目录。

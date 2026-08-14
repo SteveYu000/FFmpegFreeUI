@@ -36,10 +36,10 @@ Public Class 插件管理
 
     Private Shared Sub 加载单个插件(插件文件 As String)
         ' 在加载程序集之前读取引用表，确保缺少可选 SDK 时不会执行插件的任何代码。
-        If Not 插件扩展桥接_v2.可用 AndAlso 插件文件依赖SDK(插件文件) Then Exit Sub
+        If Not Ext插件扩展桥接_v2.可用 AndAlso 插件文件依赖ExtSDK(插件文件) Then Exit Sub
 
         Dim 程序集 = Assembly.LoadFrom(插件文件)
-        If 插件扩展桥接_v2.可用 AndAlso 插件扩展桥接_v2.尝试加载v2插件(程序集) Then
+        If Ext插件扩展桥接_v2.可用 AndAlso Ext插件扩展桥接_v2.尝试加载Ext插件(程序集) Then
             Exit Sub
         End If
 
@@ -68,7 +68,7 @@ Public Class 插件管理
         Entry方法.Invoke(Nothing, Nothing)
     End Sub
 
-    Private Shared Function 插件文件依赖SDK(插件文件 As String) As Boolean
+    Private Shared Function 插件文件依赖ExtSDK(插件文件 As String) As Boolean
         Try
             Using stream = File.OpenRead(插件文件)
                 Using reader As New PEReader(stream)
@@ -77,7 +77,7 @@ Public Class 插件管理
                     For Each handle In metadata.AssemblyReferences
                         Dim reference = metadata.GetAssemblyReference(handle)
                         Dim name = metadata.GetString(reference.Name)
-                        If String.Equals(name, "FFmpegFreeUI.PluginSdk", StringComparison.OrdinalIgnoreCase) Then
+                        If String.Equals(name, "FFmpegFreeUI.Ext.PluginSdk", StringComparison.OrdinalIgnoreCase) Then
                             Return True
                         End If
                     Next

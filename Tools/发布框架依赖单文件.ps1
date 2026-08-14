@@ -1,16 +1,16 @@
 <#
 .SYNOPSIS
-    发布 FFmpegFreeUI 的框架依赖单文件版本。
+    发布 FFmpegFreeUI API Extended Edition 的框架依赖单文件版本。
 
 .DESCRIPTION
     默认发布 win-x64。主程序会打包为单个 EXE，但不会包含 .NET 运行时。
-    可选择发布 win-arm64、同时发布两个架构、启用单文件压缩，或附带 Plugin API v2 组件。
+    可选择发布 win-arm64、同时发布两个架构、启用单文件压缩，或附带 Ext Plugin API v2 组件。
 
 .EXAMPLE
     .\Tools\发布框架依赖单文件.ps1
 
 .EXAMPLE
-    .\Tools\发布框架依赖单文件.ps1 -Architecture all -IncludePluginApi -Compress
+    .\Tools\发布框架依赖单文件.ps1 -Architecture all -IncludeExtPluginApi -Compress
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\Tools\发布框架依赖单文件.ps1 -Architecture arm64
@@ -23,7 +23,7 @@ param(
     [string]$Architecture = "x64",
 
     [Parameter()]
-    [switch]$IncludePluginApi,
+    [switch]$IncludeExtPluginApi,
 
     [Parameter()]
     [switch]$Compress,
@@ -37,8 +37,8 @@ $ErrorActionPreference = "Stop"
 
 $仓库根目录 = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $主项目 = Join-Path $仓库根目录 "FFmpegFreeUI\FFmpegFreeUI.vbproj"
-$插件宿主项目 = Join-Path $仓库根目录 "FFmpegFreeUI.PluginHost\FFmpegFreeUI.PluginHost.vbproj"
-$插件SDK项目 = Join-Path $仓库根目录 "FFmpegFreeUI.PluginSdk\FFmpegFreeUI.PluginSdk.csproj"
+$插件宿主项目 = Join-Path $仓库根目录 "FFmpegFreeUI.Ext.PluginHost\FFmpegFreeUI.Ext.PluginHost.vbproj"
+$插件SDK项目 = Join-Path $仓库根目录 "FFmpegFreeUI.Ext.PluginSdk\FFmpegFreeUI.Ext.PluginSdk.csproj"
 $输出根目录 = Join-Path $仓库根目录 "artifacts\FrameworkDependentSingleFile"
 $配置 = "Release"
 
@@ -94,7 +94,7 @@ function Publish-Architecture {
     $运行标识 = "win-$TargetArchitecture"
     $输出目录 = Join-Path $输出根目录 $运行标识
 
-    # 每次都重建对应输出目录，防止旧 DLL 混入不附带 Plugin API 的版本。
+    # 每次都重建对应输出目录，防止旧 DLL 混入不附带 Ext Plugin API 的版本。
     if (Test-Path -LiteralPath $输出目录) {
         Remove-Item -LiteralPath $输出目录 -Recurse -Force
     }
@@ -129,9 +129,9 @@ function Publish-Architecture {
         throw "发布命令已结束，但未找到主程序：$主程序"
     }
 
-    if ($IncludePluginApi) {
-        Copy-Item -LiteralPath $插件宿主文件 -Destination (Join-Path $输出目录 "FFmpegFreeUI.PluginHost.dll") -Force
-        Copy-Item -LiteralPath $插件SDK文件 -Destination (Join-Path $输出目录 "FFmpegFreeUI.PluginSdk.dll") -Force
+    if ($IncludeExtPluginApi) {
+        Copy-Item -LiteralPath $插件宿主文件 -Destination (Join-Path $输出目录 "FFmpegFreeUI.Ext.PluginHost.dll") -Force
+        Copy-Item -LiteralPath $插件SDK文件 -Destination (Join-Path $输出目录 "FFmpegFreeUI.Ext.PluginSdk.dll") -Force
     }
 
     Write-Host "发布完成：$输出目录" -ForegroundColor Green
@@ -160,20 +160,20 @@ if (-not [int]::TryParse($主版本文本, [ref]$主版本) -or $主版本 -lt 1
 $插件宿主文件 = ""
 $插件SDK文件 = ""
 
-if ($IncludePluginApi) {
-    Write-Host "正在构建 Plugin API v2 组件 ..." -ForegroundColor Cyan
+if ($IncludeExtPluginApi) {
+    Write-Host "正在构建 Ext Plugin API v2 组件 ..." -ForegroundColor Cyan
     $构建参数 = @("build", $插件宿主项目, "-c", $配置)
     if ($NoRestore) {
         $构建参数 += "--no-restore"
     }
 
-    Invoke-DotNet -Arguments $构建参数 -FailureMessage "Plugin API v2 组件构建失败"
+    Invoke-DotNet -Arguments $构建参数 -FailureMessage "Ext Plugin API v2 组件构建失败"
     $插件宿主文件 = Get-SingleBuildFile `
-        -SearchRoot (Join-Path $仓库根目录 "FFmpegFreeUI.PluginHost\bin\$配置") `
-        -FileName "FFmpegFreeUI.PluginHost.dll"
+        -SearchRoot (Join-Path $仓库根目录 "FFmpegFreeUI.Ext.PluginHost\bin\$配置") `
+        -FileName "FFmpegFreeUI.Ext.PluginHost.dll"
     $插件SDK文件 = Get-SingleBuildFile `
-        -SearchRoot (Join-Path $仓库根目录 "FFmpegFreeUI.PluginSdk\bin\$配置") `
-        -FileName "FFmpegFreeUI.PluginSdk.dll"
+        -SearchRoot (Join-Path $仓库根目录 "FFmpegFreeUI.Ext.PluginSdk\bin\$配置") `
+        -FileName "FFmpegFreeUI.Ext.PluginSdk.dll"
 }
 
 $目标架构列表 = switch ($Architecture) {

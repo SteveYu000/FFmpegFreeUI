@@ -1,14 +1,14 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using FFmpegFreeUI.PluginSdk;
+using FFmpegFreeUI.Ext.PluginSdk;
 
-namespace ThreeFui.PluginApi.Sample;
+namespace FFmpegFreeUI.Ext.PluginApi.Sample;
 
 public sealed partial class SamplePlugin
 {
-    // preset.before-apply：可在原生控件接收预设前迁移插件状态或原生字段。
-    private ValueTask PresetBeforeApply(PluginPipelineContext context, CancellationToken cancellationToken)
+    // ext.preset.before-apply：可在原生控件接收预设前迁移插件状态或原生字段。
+    private ValueTask PresetBeforeApply(ExtPluginPipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var (preset, state) = ReadPresetAndState(context.PresetJson);
@@ -17,21 +17,21 @@ public sealed partial class SamplePlugin
             state.Version = 2;
             WriteState(preset, state);
             WritePreset(context, preset);
-            Log(PluginLogLevel.Information, $"已在 {context.SurfaceId} 迁移示例状态到版本 2");
+            Log(ExtPluginLogLevel.Information, $"已在 {context.SurfaceId} 迁移示例状态到版本 2");
         }
         return ValueTask.CompletedTask;
     }
 
-    // preset.after-apply：原生映射已经结束，适合观察和刷新插件显示，不适合再改 JSON 期待原生界面重映射。
-    private ValueTask PresetAfterApply(PluginPipelineContext context, CancellationToken cancellationToken)
+    // ext.preset.after-apply：原生映射已经结束，适合观察和刷新插件显示，不适合再改 JSON 期待原生界面重映射。
+    private ValueTask PresetAfterApply(ExtPluginPipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Log(PluginLogLevel.Trace, $"预设已应用：stage={context.StageId}, surface={context.SurfaceId}");
+        Log(ExtPluginLogLevel.Trace, $"预设已应用：stage={context.StageId}, surface={context.SurfaceId}");
         return ValueTask.CompletedTask;
     }
 
-    // preset.before-capture：随后原生控件会覆盖它们拥有的字段，因此这里只保存辅助状态。
-    private ValueTask PresetBeforeCapture(PluginPipelineContext context, CancellationToken cancellationToken)
+    // ext.preset.before-capture：随后原生控件会覆盖它们拥有的字段，因此这里只保存辅助状态。
+    private ValueTask PresetBeforeCapture(ExtPluginPipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var (preset, state) = ReadPresetAndState(context.PresetJson);
@@ -41,8 +41,8 @@ public sealed partial class SamplePlugin
         return ValueTask.CompletedTask;
     }
 
-    // preset.after-capture：原生字段已经完整捕获，是覆盖最终预设质量参数的可靠位置。
-    private ValueTask PresetAfterCapture(PluginPipelineContext context, CancellationToken cancellationToken)
+    // ext.preset.after-capture：原生字段已经完整捕获，是覆盖最终预设质量参数的可靠位置。
+    private ValueTask PresetAfterCapture(ExtPluginPipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var (preset, state) = ReadPresetAndState(context.PresetJson);
@@ -54,8 +54,8 @@ public sealed partial class SamplePlugin
         return ValueTask.CompletedTask;
     }
 
-    // queue.before-add：快速修改新任务快照和 Properties["taskName"]，不可在同步阶段执行耗时 I/O。
-    private ValueTask QueueBeforeAdd(PluginPipelineContext context, CancellationToken cancellationToken)
+    // ext.queue.before-add：快速修改新任务快照和 Properties["taskName"]，不可在同步阶段执行耗时 I/O。
+    private ValueTask QueueBeforeAdd(ExtPluginPipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var state = TryReadState(context.PresetJson);
@@ -74,9 +74,9 @@ public sealed partial class SamplePlugin
         return ValueTask.CompletedTask;
     }
 
-    // task.before-prepare：可取消的媒体分析或网络查询应放在这里；修改预设后宿主会据此构建步骤。
+    // ext.task.before-prepare：可取消的媒体分析或网络查询应放在这里；修改预设后宿主会据此构建步骤。
     private async ValueTask TaskBeforePrepareAsync(
-        PluginPipelineContext context,
+        ExtPluginPipelineContext context,
         CancellationToken cancellationToken)
     {
         var state = TryReadState(context.PresetJson);
@@ -105,8 +105,8 @@ public sealed partial class SamplePlugin
         context.ReportProgress($"示例质量值已确定为 CRF {enabledState.Crf}", 0.25);
     }
 
-    // command.before-build：以结构化 JSON 改参数；会用于预览和每个真实步骤，必须幂等。
-    private ValueTask CommandBeforeBuild(PluginPipelineContext context, CancellationToken cancellationToken)
+    // ext.command.before-build：以结构化 JSON 改参数；会用于预览和每个真实步骤，必须幂等。
+    private ValueTask CommandBeforeBuild(ExtPluginPipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var state = TryReadState(context.PresetJson);
@@ -120,13 +120,13 @@ public sealed partial class SamplePlugin
         preset["视频参数_质量控制_进阶参数集"] = AppendTokenOnce(current, state.AdvancedArguments);
         WritePreset(context, preset);
         Log(
-            PluginLogLevel.Trace,
+            ExtPluginLogLevel.Trace,
             $"结构化命令调整：phase={context.PhaseName}, preview={context.IsPreview}");
         return ValueTask.CompletedTask;
     }
 
-    // command.after-build：只能修改最终参数字符串；这里用可重复调用的方式前置全局参数。
-    private ValueTask CommandAfterBuild(PluginPipelineContext context, CancellationToken cancellationToken)
+    // ext.command.after-build：只能修改最终参数字符串；这里用可重复调用的方式前置全局参数。
+    private ValueTask CommandAfterBuild(ExtPluginPipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var state = TryReadState(context.PresetJson);
@@ -137,9 +137,9 @@ public sealed partial class SamplePlugin
         return ValueTask.CompletedTask;
     }
 
-    // task.after-prepare：全部步骤首次生成后验证；修改任务数据会让宿主重建步骤。
+    // ext.task.after-prepare：全部步骤首次生成后验证；修改任务数据会让宿主重建步骤。
     private async ValueTask TaskAfterPrepareAsync(
-        PluginPipelineContext context,
+        ExtPluginPipelineContext context,
         CancellationToken cancellationToken)
     {
         var state = TryReadState(context.PresetJson);
@@ -156,9 +156,9 @@ public sealed partial class SamplePlugin
             0.3);
     }
 
-    // process.before-start：最后一刻替换可执行文件或参数，并读取宿主提供的步骤属性。
+    // ext.process.before-start：最后一刻替换可执行文件或参数，并读取宿主提供的步骤属性。
     private ValueTask ProcessBeforeStartAsync(
-        PluginPipelineContext context,
+        ExtPluginPipelineContext context,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -184,9 +184,9 @@ public sealed partial class SamplePlugin
         return ValueTask.CompletedTask;
     }
 
-    // process.after-exit：观察或按明确协议校正单步骤退出码；它不表示整个任务已经结束。
+    // ext.process.after-exit：观察或按明确协议校正单步骤退出码；它不表示整个任务已经结束。
     private ValueTask ProcessAfterExitAsync(
-        PluginPipelineContext context,
+        ExtPluginPipelineContext context,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -207,9 +207,9 @@ public sealed partial class SamplePlugin
         return ValueTask.CompletedTask;
     }
 
-    // task.after-complete：适合可取消的成功后处理；示例计算 SHA-256 并发布两个结构化结果。
+    // ext.task.after-complete：适合可取消的成功后处理；示例计算 SHA-256 并发布两个结构化结果。
     private async ValueTask TaskAfterCompleteAsync(
-        PluginPipelineContext context,
+        ExtPluginPipelineContext context,
         CancellationToken cancellationToken)
     {
         var state = TryReadState(context.PresetJson);
@@ -237,9 +237,9 @@ public sealed partial class SamplePlugin
         context.ReportProgress("输出校验完成", 1);
     }
 
-    // task.after-failed：只读诊断并上报结果；该阶段使用不可取消令牌，应快速返回。
+    // ext.task.after-failed：只读诊断并上报结果；该阶段使用不可取消令牌，应快速返回。
     private ValueTask TaskAfterFailedAsync(
-        PluginPipelineContext context,
+        ExtPluginPipelineContext context,
         CancellationToken cancellationToken)
     {
         if (!IsActive(TryReadState(context.PresetJson)))
@@ -249,14 +249,14 @@ public sealed partial class SamplePlugin
 
         context.ReportResult("task.failure", context.TaskStatus.ToString(), "失败状态");
         Log(
-            PluginLogLevel.Error,
+            ExtPluginLogLevel.Error,
             $"任务 {context.TaskId} 进入 {DescribeTaskStatus(context.TaskStatus)} 状态");
         return ValueTask.CompletedTask;
     }
 
-    // task.after-finish：成功、失败、取消都会运行；只做有界且幂等的缓存清理。
+    // ext.task.after-finish：成功、失败、取消都会运行；只做有界且幂等的缓存清理。
     private ValueTask TaskAfterFinishAsync(
-        PluginPipelineContext context,
+        ExtPluginPipelineContext context,
         CancellationToken cancellationToken)
     {
         if (TryRemoveSession(context.TaskId, out var session) && session is not null)
@@ -330,15 +330,15 @@ public sealed partial class SamplePlugin
         return $"{option} {commandLine}".TrimEnd();
     }
 
-    private static string DescribeTaskStatus(PluginTaskStatus status) => status switch
+    private static string DescribeTaskStatus(ExtPluginTaskStatus status) => status switch
     {
-        PluginTaskStatus.Unknown => "未知",
-        PluginTaskStatus.Pending => "等待中",
-        PluginTaskStatus.Running => "运行中",
-        PluginTaskStatus.Paused => "已暂停",
-        PluginTaskStatus.Succeeded => "成功",
-        PluginTaskStatus.Failed => "失败",
-        PluginTaskStatus.Canceled => "已取消",
+        ExtPluginTaskStatus.Unknown => "未知",
+        ExtPluginTaskStatus.Pending => "等待中",
+        ExtPluginTaskStatus.Running => "运行中",
+        ExtPluginTaskStatus.Paused => "已暂停",
+        ExtPluginTaskStatus.Succeeded => "成功",
+        ExtPluginTaskStatus.Failed => "失败",
+        ExtPluginTaskStatus.Canceled => "已取消",
         _ => status.ToString()
     };
 }

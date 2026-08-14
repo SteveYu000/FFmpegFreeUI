@@ -97,6 +97,40 @@ Partial Public Class 预设管理_v6
         End Select
     End Function
 
+    Private Shared Function 质量控制方式ChoiceIdToEnum(choiceId As String) As 预设数据_v6.视频全局质量控制方式
+        Select Case If(choiceId, "").Trim().ToLowerInvariant()
+            Case Ext插件界面选项_v2.视频质量CRF
+                Return 预设数据_v6.视频全局质量控制方式.CRF
+            Case Ext插件界面选项_v2.视频质量VBR
+                Return 预设数据_v6.视频全局质量控制方式.VBR
+            Case Ext插件界面选项_v2.视频质量CQP
+                Return 预设数据_v6.视频全局质量控制方式.CQP
+            Case Ext插件界面选项_v2.视频质量CBR
+                Return 预设数据_v6.视频全局质量控制方式.CBR
+            Case Ext插件界面选项_v2.视频质量TPE
+                Return 预设数据_v6.视频全局质量控制方式.TPE
+            Case Else
+                Return 预设数据_v6.视频全局质量控制方式.未选择
+        End Select
+    End Function
+
+    Private Shared Function 质量控制方式ToChoiceId(value As 预设数据_v6.视频全局质量控制方式) As String
+        Select Case 标准化视频全局质量控制方式(value)
+            Case 预设数据_v6.视频全局质量控制方式.CRF
+                Return Ext插件界面选项_v2.视频质量CRF
+            Case 预设数据_v6.视频全局质量控制方式.VBR
+                Return Ext插件界面选项_v2.视频质量VBR
+            Case 预设数据_v6.视频全局质量控制方式.CQP
+                Return Ext插件界面选项_v2.视频质量CQP
+            Case 预设数据_v6.视频全局质量控制方式.CBR
+                Return Ext插件界面选项_v2.视频质量CBR
+            Case 预设数据_v6.视频全局质量控制方式.TPE
+                Return Ext插件界面选项_v2.视频质量TPE
+            Case Else
+                Return Ext插件界面选项_v2.视频质量未选择
+        End Select
+    End Function
+
     Private Shared Function TrackValue(track As Object) As String
         If track Is Nothing Then Return ""
         Dim p = track.GetType().GetProperty("Value")
@@ -536,7 +570,7 @@ Partial Public Class 预设管理_v6
 
     Private Shared Sub 储存质量(a As 预设数据_v6, ui As Form_v6_参数面板)
         With ui.私有界面_质量
-            a.视频参数_比特率_控制方式 = 质量控制方式SelectedIndexToEnum(Math.Max(0, .MCB_全局质量控制方式.SelectedIndex))
+            a.视频参数_比特率_控制方式 = 质量控制方式ChoiceIdToEnum(.获取当前原生质量选项ID())
             a.视频参数_质量控制_参数名 = .MCB_质量参数名称.Text.TrimStart("-"c)
             a.视频参数_质量控制_值 = .MTB_质量值.Text
             a.视频参数_比特率_基础 = .MTB_基础比特率.Text
@@ -549,7 +583,7 @@ Partial Public Class 预设管理_v6
 
     Private Shared Sub 显示质量(a As 预设数据_v6, ui As Form_v6_参数面板)
         With ui.私有界面_质量
-            .MCB_全局质量控制方式.SelectedIndex = 质量控制方式ToSelectedIndex(a.视频参数_比特率_控制方式)
+            .选择质量选项(质量控制方式ToChoiceId(a.视频参数_比特率_控制方式))
             .MCB_质量参数名称.Text = If(a.视频参数_质量控制_参数名 <> "" AndAlso Not a.视频参数_质量控制_参数名.StartsWith("-"c), "-" & a.视频参数_质量控制_参数名, a.视频参数_质量控制_参数名)
             .MTB_质量值.Text = a.视频参数_质量控制_值
             .MTB_基础比特率.Text = a.视频参数_比特率_基础

@@ -233,10 +233,10 @@ Public Class 编码队列_v6
             .任务名称 = 应用任务名称混淆(If(String.IsNullOrWhiteSpace(任务名称), Path.GetFileName(输入文件), 任务名称)),
             .预设数据 = 预设数据
         }
-        Dim context = 插件扩展桥接_v2.创建任务管线上下文(插件处理阶段_v2.加入队列之前, task)
+        Dim context = Ext插件扩展桥接_v2.创建任务管线上下文(Ext插件处理阶段_v2.加入队列之前, task)
         context.Properties("taskName") = task.任务名称
-        插件扩展桥接_v2.执行同步阶段(插件处理阶段_v2.加入队列之前, context)
-        插件扩展桥接_v2.应用任务管线上下文(task, context)
+        Ext插件扩展桥接_v2.执行同步阶段(Ext插件处理阶段_v2.加入队列之前, context)
+        Ext插件扩展桥接_v2.应用任务管线上下文(task, context)
         Dim processedTaskName As String = Nothing
         If context.Properties.TryGetValue("taskName", processedTaskName) Then task.任务名称 = If(processedTaskName, "")
         SyncLock 队列锁
@@ -255,10 +255,10 @@ Public Class 编码队列_v6
             .任务名称 = 应用任务名称混淆(If(String.IsNullOrWhiteSpace(任务名称), If(String.IsNullOrWhiteSpace(输入文件), "命令行任务", Path.GetFileName(输入文件)), 任务名称)),
             .命令行 = 命令行
         }
-        Dim context = 插件扩展桥接_v2.创建任务管线上下文(插件处理阶段_v2.加入队列之前, task)
+        Dim context = Ext插件扩展桥接_v2.创建任务管线上下文(Ext插件处理阶段_v2.加入队列之前, task)
         context.Properties("taskName") = task.任务名称
-        插件扩展桥接_v2.执行同步阶段(插件处理阶段_v2.加入队列之前, context)
-        插件扩展桥接_v2.应用任务管线上下文(task, context)
+        Ext插件扩展桥接_v2.执行同步阶段(Ext插件处理阶段_v2.加入队列之前, context)
+        Ext插件扩展桥接_v2.应用任务管线上下文(task, context)
         Dim processedTaskName As String = Nothing
         If context.Properties.TryGetValue("taskName", processedTaskName) Then task.任务名称 = If(processedTaskName, "")
         SyncLock 队列锁
@@ -1507,17 +1507,17 @@ Public Class 编码任务_v6
                 追加日志($"[3FUI] 任务开始：{If(任务名称 <> "", 任务名称, Path.GetFileName(输入文件))}", 编码任务日志类别_v6.系统, Nothing, False, False)
             Dim 处理前输出文件 = 输出文件
             Dim 处理前由自动命名生成 = 输出文件由自动命名生成
-            Dim beforePrepare = 插件扩展桥接_v2.创建任务管线上下文(插件处理阶段_v2.准备任务之前, Me)
-            Await 插件扩展桥接_v2.执行异步阶段Async(插件处理阶段_v2.准备任务之前, beforePrepare, cancellationToken).ConfigureAwait(False)
-            插件扩展桥接_v2.应用任务管线上下文(Me, beforePrepare)
+            Dim beforePrepare = Ext插件扩展桥接_v2.创建任务管线上下文(Ext插件处理阶段_v2.准备任务之前, Me)
+            Await Ext插件扩展桥接_v2.执行异步阶段Async(Ext插件处理阶段_v2.准备任务之前, beforePrepare, cancellationToken).ConfigureAwait(False)
+            Ext插件扩展桥接_v2.应用任务管线上下文(Me, beforePrepare)
             编码队列_v6.刷新插件处理后的输出文件(Me, 处理前输出文件, 处理前由自动命名生成)
             cancellationToken.ThrowIfCancellationRequested()
             准备输入输出与步骤()
 
-            Dim afterPrepare = 插件扩展桥接_v2.创建任务管线上下文(插件处理阶段_v2.准备任务之后, Me)
+            Dim afterPrepare = Ext插件扩展桥接_v2.创建任务管线上下文(Ext插件处理阶段_v2.准备任务之后, Me)
             afterPrepare.Properties("stepCount") = 步骤.Count.ToString(Globalization.CultureInfo.InvariantCulture)
-            Await 插件扩展桥接_v2.执行异步阶段Async(插件处理阶段_v2.准备任务之后, afterPrepare, cancellationToken).ConfigureAwait(False)
-            Dim afterPresetJson = 插件扩展桥接_v2.序列化预设(预设数据)
+            Await Ext插件扩展桥接_v2.执行异步阶段Async(Ext插件处理阶段_v2.准备任务之后, afterPrepare, cancellationToken).ConfigureAwait(False)
+            Dim afterPresetJson = Ext插件扩展桥接_v2.序列化预设(预设数据)
             Dim needsRebuild = Not String.Equals(afterPrepare.PresetJson, afterPresetJson, StringComparison.Ordinal) OrElse
                                Not String.Equals(afterPrepare.InputPath, 输入文件, StringComparison.Ordinal) OrElse
                                Not String.Equals(afterPrepare.OutputPath, 输出文件, StringComparison.Ordinal) OrElse
@@ -1525,7 +1525,7 @@ Public Class 编码任务_v6
             If needsRebuild Then
                 处理前输出文件 = 输出文件
                 处理前由自动命名生成 = 输出文件由自动命名生成
-                插件扩展桥接_v2.应用任务管线上下文(Me, afterPrepare)
+                Ext插件扩展桥接_v2.应用任务管线上下文(Me, afterPrepare)
                 编码队列_v6.刷新插件处理后的输出文件(Me, 处理前输出文件, 处理前由自动命名生成)
                 准备输入输出与步骤()
             End If
@@ -1580,10 +1580,10 @@ Public Class 编码任务_v6
 
             If 是当前执行(执行标识) AndAlso 状态 = 编码任务状态_v6.正在处理 Then
                 原生步骤全部成功 = True
-                Dim afterComplete = 插件扩展桥接_v2.创建任务管线上下文(插件处理阶段_v2.任务成功之后, Me)
+                Dim afterComplete = Ext插件扩展桥接_v2.创建任务管线上下文(Ext插件处理阶段_v2.任务成功之后, Me)
                 afterComplete.TaskStatus = "succeeded"
                 afterComplete.Properties("elapsedMilliseconds") = CLng(任务耗时计时器.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)
-                Await 插件扩展桥接_v2.执行异步阶段Async(插件处理阶段_v2.任务成功之后, afterComplete, cancellationToken).ConfigureAwait(False)
+                Await Ext插件扩展桥接_v2.执行异步阶段Async(Ext插件处理阶段_v2.任务成功之后, afterComplete, cancellationToken).ConfigureAwait(False)
                 cancellationToken.ThrowIfCancellationRequested()
                 If Not 是当前执行(执行标识) Then Exit Try
                 状态 = 编码任务状态_v6.已完成
@@ -1610,9 +1610,9 @@ Public Class 编码任务_v6
             ' VB.NET 不允许在 Finally 中 Await，因此终态处理位于受外层 Finally 保护的正常 Try 区域。
             If 是当前执行(执行标识) Then
                 If 状态 = 编码任务状态_v6.错误 Then
-                    Await 安全执行终态插件阶段Async(插件处理阶段_v2.任务失败之后).ConfigureAwait(False)
+                    Await 安全执行终态插件阶段Async(Ext插件处理阶段_v2.任务失败之后).ConfigureAwait(False)
                 End If
-                Await 安全执行终态插件阶段Async(插件处理阶段_v2.任务结束之后).ConfigureAwait(False)
+                Await 安全执行终态插件阶段Async(Ext插件处理阶段_v2.任务结束之后).ConfigureAwait(False)
             End If
         Finally
             任务耗时计时器.Stop()
@@ -1631,9 +1631,9 @@ Public Class 编码任务_v6
 
     Private Async Function 安全执行终态插件阶段Async(stageId As String) As Task
         Try
-            Dim context = 插件扩展桥接_v2.创建任务管线上下文(stageId, Me)
+            Dim context = Ext插件扩展桥接_v2.创建任务管线上下文(stageId, Me)
             context.Properties("elapsedMilliseconds") = CLng(任务耗时计时器.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)
-            Await 插件扩展桥接_v2.执行异步阶段Async(stageId, context, Threading.CancellationToken.None).ConfigureAwait(False)
+            Await Ext插件扩展桥接_v2.执行异步阶段Async(stageId, context, Threading.CancellationToken.None).ConfigureAwait(False)
         Catch ex As Exception
             追加日志($"[3FUI] 终态插件处理失败：{ex.Message}", 编码任务日志类别_v6.错误, 当前步骤, True, False)
         End Try
@@ -1702,12 +1702,12 @@ Public Class 编码任务_v6
         process.StartInfo.CreateNoWindow = True
         process.EnableRaisingEvents = True
 
-        Dim beforeStart = 插件扩展桥接_v2.创建任务管线上下文(插件处理阶段_v2.启动进程之前, Me)
+        Dim beforeStart = Ext插件扩展桥接_v2.创建任务管线上下文(Ext插件处理阶段_v2.启动进程之前, Me)
         beforeStart.ProcessFileName = process.StartInfo.FileName
         beforeStart.CommandLine = process.StartInfo.Arguments
         beforeStart.PhaseName = stepItem.显示名称
         beforeStart.Properties("commandStage") = stepItem.阶段.ToString()
-        Await 插件扩展桥接_v2.执行异步阶段Async(插件处理阶段_v2.启动进程之前, beforeStart, cancellationToken).ConfigureAwait(False)
+        Await Ext插件扩展桥接_v2.执行异步阶段Async(Ext插件处理阶段_v2.启动进程之前, beforeStart, cancellationToken).ConfigureAwait(False)
         cancellationToken.ThrowIfCancellationRequested()
         process.StartInfo.FileName = beforeStart.ProcessFileName
         process.StartInfo.Arguments = beforeStart.CommandLine
@@ -1733,13 +1733,13 @@ Public Class 编码任务_v6
             process.ProcessorAffinity = GetAffinityMask(设置_v6.实例对象.指定处理器核心.Split(","c).Select(Function(s) s.Trim()).Where(Function(s) Integer.TryParse(s, Nothing)).Select(Function(s) Integer.Parse(s)).ToArray())
         End If
         Dim exitCode = Await tcs.Task.ConfigureAwait(False)
-        Dim afterExit = 插件扩展桥接_v2.创建任务管线上下文(插件处理阶段_v2.进程退出之后, Me)
+        Dim afterExit = Ext插件扩展桥接_v2.创建任务管线上下文(Ext插件处理阶段_v2.进程退出之后, Me)
         afterExit.ProcessFileName = process.StartInfo.FileName
         afterExit.CommandLine = process.StartInfo.Arguments
         afterExit.PhaseName = stepItem.显示名称
         afterExit.ExitCode = exitCode
         afterExit.Properties("commandStage") = stepItem.阶段.ToString()
-        Await 插件扩展桥接_v2.执行异步阶段Async(插件处理阶段_v2.进程退出之后, afterExit, cancellationToken).ConfigureAwait(False)
+        Await Ext插件扩展桥接_v2.执行异步阶段Async(Ext插件处理阶段_v2.进程退出之后, afterExit, cancellationToken).ConfigureAwait(False)
         Return afterExit.ExitCode.GetValueOrDefault(exitCode)
     End Function
 

@@ -86,6 +86,7 @@ Public Class FormMain_v6
         Application.DoEvents()
         启动参数响应_v6.处理首次启动参数()
 
+        网络功能.启动时检查新版本()
         网络功能.获取新闻列表()
 
         If 设置_v6.实例对象.启用性能计数器 = 0 Then
