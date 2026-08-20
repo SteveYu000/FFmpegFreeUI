@@ -1,0 +1,62 @@
+name: Publish Ext Plugin SDK to NuGet.org
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Pack and publish SDK
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    environment: nuget-release
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Pack SDK
+        run: >
+          dotnet pack
+          FFmpegFreeUI.Ext.PluginSdk/FFmpegFreeUI.Ext.PluginSdk.csproj
+          --configuration Release
+          --output artifacts/packages
+          -p:ContinuousIntegrationBuild=true
+
+      - name: Login to NuGet.org with OIDC
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish package
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+        run: |
+          $packages = @(
+              Get-ChildItem `
+                  -LiteralPath "artifacts/packages" `
+                  -Filter "*.nupkg"
+          )
+
+          if ($packages.Count -ne 1) {
+              throw "Expected exactly one .nupkg, found $($packages.Count)."
+          }
+
+          dotnet nuget push $packages[0].FullName `
+              --api-key $env:NUGET_API_KEY `
+              --source "https://api.nuget.org/v3/index.json"
+
+          if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+          }
