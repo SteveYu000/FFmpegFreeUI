@@ -35,7 +35,7 @@ Ext Plugin API v2 是可选组件。只有程序根目录同时存在 `FFmpegFre
 
 仓库同时提供 [C# v2.3 综合示例](Samples/FFmpegFreeUI.Ext.PluginApi.Sample) 和 [VB.NET v2.2 兼容基线示例](Samples/FFmpegFreeUI.Ext.PluginApi.VbVmafSample)。C# 示例覆盖动态参数控件、页面插入、声明式参数和自定义命令步骤；两者分别以 SHA-256 与 VMAF 展示成功后处理。
 
-SDK 支持源码引用、DLL + XML 文档引用和本地 NuGet 包；`ExtDeployFFmpegFreeUIPlugin` MSBuild 目标可用一条命令完成插件编译与依赖部署，具体配置见开发指南第 2、3、17 节。
+SDK 已发布到 [NuGet.org](https://www.nuget.org/packages/FFmpegFreeUI.Ext.PluginSdk)，独立插件推荐直接使用 `PackageReference`；源码引用和 DLL + XML 文档引用继续用于 SDK 联调与离线开发。`ExtDeployFFmpegFreeUIPlugin` MSBuild 目标可用一条命令完成插件还原、编译与依赖部署，具体配置见开发指南第 2、3、17 节。
 
 ---
 
