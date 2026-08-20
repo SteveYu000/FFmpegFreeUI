@@ -1445,7 +1445,7 @@ Friend Module Ext插件扩展宿主_v2
     End Sub
 
     Private NotInheritable Class 插件作用域宿主
-        Implements IExtFFmpegFreeUIHostV23, IDisposable
+        Implements IExtFFmpegFreeUIHost, IDisposable
 
         Private ReadOnly _pluginId As String
         Private ReadOnly _displayName As String
@@ -1507,13 +1507,13 @@ Friend Module Ext插件扩展宿主_v2
             End Get
         End Property
 
-        Public ReadOnly Property ParameterPanel As IExtPluginParameterPanelCatalog Implements IExtFFmpegFreeUIHostV23.ParameterPanel
+        Public ReadOnly Property ParameterPanel As IExtPluginParameterPanelCatalog Implements IExtFFmpegFreeUIHost.ParameterPanel
             Get
                 Return _parameterPanel
             End Get
         End Property
 
-        Public ReadOnly Property Commands As IExtPluginCommandRegistry Implements IExtFFmpegFreeUIHostV23.Commands
+        Public ReadOnly Property Commands As IExtPluginCommandRegistry Implements IExtFFmpegFreeUIHost.Commands
             Get
                 Return _commands
             End Get

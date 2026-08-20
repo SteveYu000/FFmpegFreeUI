@@ -22,7 +22,8 @@
 
 - `IExtFFmpegFreeUIPlugin`：`Id`、`DisplayName`、`Initialize`。
 - `IExtFFmpegFreeUIHost`：`ApiVersion`、`HostVersion`、`Ui`、`Pipeline`、4 种 `Log` 级别。
-- `IExtFFmpegFreeUIHostV23`：`ParameterPanel` 与 `Commands`。
+- `IExtFFmpegFreeUIHost.ParameterPanel`：参数页与全部原生控件目录。
+- `IExtFFmpegFreeUIHost.Commands`：声明式参数与外部命令步骤。
 - `AvailablePages` / `AvailableControls`：页面插槽、全部原生控件锚点和动态资源 ID。
 - `RegisterParameterProvider`：向 `BeforeOutput` 位置贡献可预览的参数。
 - `RegisterStepProvider`：贡献由队列统一执行和取消的 `BeforeNative` 外部命令。
@@ -43,6 +44,14 @@
 
 ```powershell
 dotnet build .\Samples\FFmpegFreeUI.Ext.PluginApi.Sample\FFmpegFreeUI.Ext.PluginApi.Sample.csproj -c Release
+```
+
+示例已经导入 SDK 的一键部署目标。目标 FFmpegFreeUI 完全退出后，可直接编译并部署：
+
+```powershell
+dotnet build .\Samples\FFmpegFreeUI.Ext.PluginApi.Sample\FFmpegFreeUI.Ext.PluginApi.Sample.csproj `
+  -c Release -t:ExtDeployFFmpegFreeUIPlugin `
+  -p:ExtFFmpegFreeUIInstallDir="D:\Apps\FFmpegFreeUI-API-Extended-Edition"
 ```
 
 只把生成的 `FFmpegFreeUI.Ext.PluginApi.Sample.3fui.dll` 放到 FFmpegFreeUI 的 `Plugin` 目录。不要复制构建目录中的

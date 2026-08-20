@@ -23,17 +23,11 @@ public interface IExtFFmpegFreeUIHost
     IExtPluginPipelineRegistry Pipeline { get; }
     IExtPluginBehaviorRegistry Behaviors { get; }
     IExtPluginResourceRegistry Resources { get; }
-    void Log(ExtPluginLogLevel level, string message, Exception? exception = null);
-}
-
-/// <summary>
-/// Ext Plugin API v2.3 的追加宿主能力。为保持已编译 v2.2 插件的二进制兼容性，
-/// 新能力通过派生接口发现，不向原有 IExtFFmpegFreeUIHost 强行增加成员。
-/// </summary>
-public interface IExtFFmpegFreeUIHostV23 : IExtFFmpegFreeUIHost
-{
+    /// <summary>v2.3：参数页、原生控件及稳定 UI 锚点目录。</summary>
     IExtPluginParameterPanelCatalog ParameterPanel { get; }
+    /// <summary>v2.3：声明式 FFmpeg 参数和外部命令步骤注册表。</summary>
     IExtPluginCommandRegistry Commands { get; }
+    void Log(ExtPluginLogLevel level, string message, Exception? exception = null);
 }
 
 /// <summary>参数面板当前公开的页面、原生控件及其稳定锚点目录。</summary>

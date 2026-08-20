@@ -35,10 +35,6 @@ public sealed partial class SamplePlugin : IExtFFmpegFreeUIPlugin
         }
 
         _host = host;
-        if (host is not IExtFFmpegFreeUIHostV23 extendedHost)
-        {
-            throw new NotSupportedException("宿主声明支持 API 2.3，但没有提供 IExtFFmpegFreeUIHostV23");
-        }
         host.Log(
             ExtPluginLogLevel.Information,
             $"正在初始化 {DisplayName}；API={host.ApiVersion}，FFmpegFreeUI={host.HostVersion}");
@@ -46,7 +42,7 @@ public sealed partial class SamplePlugin : IExtFFmpegFreeUIPlugin
         RegisterUiExtensions(host);
         RegisterSafeChoiceAndBehavior(host);
         RegisterPipelineHandlers(host);
-        RegisterV23Extensions(extendedHost);
+        RegisterApi23Extensions(host);
 
         // AvailableAnchors / AvailableStages 可用于兼容较旧宿主；不要反射查找宿主私有控件或方法。
         var missingAnchors = ExtFFmpegFreeUIUiAnchors.All.Except(

@@ -41,5 +41,13 @@
 dotnet build .\Samples\FFmpegFreeUI.Ext.PluginApi.VbVmafSample\FFmpegFreeUI.Ext.PluginApi.VbVmafSample.vbproj -c Release
 ```
 
+示例已经导入 SDK 的一键部署目标。目标 FFmpegFreeUI 完全退出后，可直接编译并部署：
+
+```powershell
+dotnet build .\Samples\FFmpegFreeUI.Ext.PluginApi.VbVmafSample\FFmpegFreeUI.Ext.PluginApi.VbVmafSample.vbproj `
+  -c Release -t:ExtDeployFFmpegFreeUIPlugin `
+  -p:ExtFFmpegFreeUIInstallDir="D:\Apps\FFmpegFreeUI-API-Extended-Edition"
+```
+
 只把生成的 `FFmpegFreeUI.Ext.PluginApi.VbVmafSample.3fui.dll` 放到 FFmpegFreeUI 的 `Plugin` 目录。不要复制构建目录中的
 `FFmpegFreeUI.Ext.PluginSdk.dll`；SDK 和 PluginHost 应由 FFmpegFreeUI 发行包统一放在程序根目录。

@@ -15,4 +15,6 @@
     </ProjectReference>
   </ItemGroup>
 
+  <Import Project="..\..\FFmpegFreeUI.Ext.PluginSdk\FFmpegFreeUI.Ext.PluginSdk.Deploy.targets" />
+
 </Project>

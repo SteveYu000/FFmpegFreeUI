@@ -8,7 +8,7 @@ public sealed partial class SamplePlugin
     private readonly ConcurrentDictionary<string, Action> _v23UiCleanup =
         new(StringComparer.OrdinalIgnoreCase);
 
-    private void RegisterV23Extensions(IExtFFmpegFreeUIHostV23 host)
+    private void RegisterApi23Extensions(IExtFFmpegFreeUIHost host)
     {
         var audioPage = host.ParameterPanel.AvailablePages.FirstOrDefault(
             page => page.PageId.Equals("audio", StringComparison.OrdinalIgnoreCase));

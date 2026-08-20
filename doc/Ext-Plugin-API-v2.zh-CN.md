@@ -71,7 +71,54 @@ Plugin\
 
 ## 2. 开发环境与示例
 
-当前项目使用 Windows、.NET 10 和 WinForms。可使用 Visual Studio、Rider、Visual Studio Code 或 `dotnet` 命令行。
+### 2.1 必备环境
+
+插件和宿主当前使用 Windows、.NET 10 与 WinForms。开发机需要：
+
+- Windows 10/11；目标体系结构应与准备调试的 FFmpegFreeUI 发行包兼容；
+- .NET 10 SDK，而不只是 .NET Desktop Runtime；
+- Visual Studio（安装“.NET 桌面开发”工作负载）、Rider，或 Visual Studio Code 配合 C# Dev Kit；
+- 若使用 VB.NET，选择支持 VB 项目的 Visual Studio、Rider 或 `dotnet` CLI。
+
+先在终端确认 SDK：
+
+```powershell
+dotnet --info
+dotnet --list-sdks
+```
+
+列表中应存在 `10.0.x`。只有运行时而没有 SDK 时，编辑器可能能打开代码，但不能还原或编译插件。
+
+在完整源码仓库中首次构建：
+
+```powershell
+git clone https://github.com/SteveYu000/FFmpegFreeUI-API-Extended-Edition.git
+cd .\FFmpegFreeUI-API-Extended-Edition
+dotnet restore .\FFmpegFreeUI-API-Extended-Edition.sln
+dotnet build .\FFmpegFreeUI-API-Extended-Edition.sln -c Debug --no-restore
+```
+
+### 2.2 SDK 引用与编辑器提示
+
+Ext 插件只引用 `FFmpegFreeUI.Ext.PluginSdk`。不要引用 `FFmpegFreeUI.exe`、`FFmpegFreeUI.dll`、`FFmpegFreeUI.Ext.PluginHost.dll` 或 LakeUI；这些属于宿主运行时实现，不是插件合同。
+
+推荐按开发方式选择引用：
+
+1. 与本仓库一起开发：使用 `ProjectReference`，可以直接导航 SDK 源码；
+2. 独立仓库开发：引用发行包中的 `FFmpegFreeUI.Ext.PluginSdk.dll`，并把同版本 XML 文档放在旁边；
+3. 类似 Maven 的包方式：使用本地或将来发布的 `FFmpegFreeUI.Ext.PluginSdk` NuGet 包。
+
+Visual Studio、Rider 和支持 C#/VB 语言服务的 VS Code 会根据程序集元数据提供类型补全、构造函数和方法参数提示、回调签名检查及编译期类型检查。`FFmpegFreeUI.Ext.PluginSdk.xml` 负责额外显示中文摘要；只有 DLL 时仍有类型和参数提示，但通常看不到详细说明。
+
+SDK 构建输出中的开发文件是：
+
+```text
+FFmpegFreeUI.Ext.PluginSdk.dll
+FFmpegFreeUI.Ext.PluginSdk.xml
+FFmpegFreeUI.Ext.PluginSdk.Deploy.targets
+```
+
+### 2.3 示例
 
 仓库提供两套可直接编译的示例：
 
@@ -107,6 +154,8 @@ cd MyCompany.MyPlugin
       <Private>false</Private>
     </ProjectReference>
   </ItemGroup>
+
+  <Import Project="..\FFmpegFreeUI-API-Extended-Edition\FFmpegFreeUI.Ext.PluginSdk\FFmpegFreeUI.Ext.PluginSdk.Deploy.targets" />
 </Project>
 ```
 
@@ -136,6 +185,8 @@ cd MyCompany.MyPlugin
       <Private>false</Private>
     </ProjectReference>
   </ItemGroup>
+
+  <Import Project="..\FFmpegFreeUI-API-Extended-Edition\FFmpegFreeUI.Ext.PluginSdk\FFmpegFreeUI.Ext.PluginSdk.Deploy.targets" />
 </Project>
 ```
 
@@ -145,8 +196,54 @@ cd MyCompany.MyPlugin
 - `AssemblyName` 必须以 `.3fui` 结尾，输出文件才会匹配 `*.3fui.dll`。
 - `<Private>false</Private>` 防止构建时把 SDK 当作插件私有依赖复制到发布目录。
 - 如果使用 SDK 二进制而不是源码项目，可改用带 `HintPath` 的 `<Reference>`，仍应设置`<Private>false</Private>`。
+- `<Import ...Deploy.targets>` 提供 `ExtDeployFFmpegFreeUIPlugin`，只影响显式部署或启用自动部署的构建；普通 `Build` 默认不会复制到安装目录。
 - SDK 当前不是必须从 NuGet 获取；直接引用项目或发行包提供的合同 DLL 即可。
 - 虽然FFmpegFreeUI使用了LakeUI，但这不是 Ext Plugin API 的硬依赖。普通 WinForms 控件最不容易受宿主 UI 库版本影响。如果插件自行引用第三方 UI 库，开发者需处理版本兼容、分发和许可证义务。
+
+### 3.3 独立项目引用 SDK 文件
+
+把同一版本的三个开发文件放进插件仓库的 `libs` 目录，然后使用：
+
+```xml
+<ItemGroup>
+  <Reference Include="FFmpegFreeUI.Ext.PluginSdk">
+    <HintPath>libs\FFmpegFreeUI.Ext.PluginSdk.dll</HintPath>
+    <Private>false</Private>
+  </Reference>
+</ItemGroup>
+
+<Import Project="libs\FFmpegFreeUI.Ext.PluginSdk.Deploy.targets" />
+```
+
+`FFmpegFreeUI.Ext.PluginSdk.xml` 不需要写进项目文件，只要与 DLL 同名并位于同一目录，编辑器就能读取中文提示。提交插件源码时可以提交这些开发文件，也可以改用包引用；发布插件成品时不要把 SDK 放进 `Plugin`。
+
+### 3.4 本地 NuGet 包：类似 Maven 的依赖方式
+
+SDK 项目支持直接打包，包内包含编译合同、XML 文档和自动导入的一键部署目标：
+
+```powershell
+dotnet pack .\FFmpegFreeUI.Ext.PluginSdk\FFmpegFreeUI.Ext.PluginSdk.csproj `
+  -c Release -o .\artifacts\packages
+```
+
+在独立插件项目中引用本地包：
+
+```xml
+<ItemGroup>
+  <PackageReference Include="FFmpegFreeUI.Ext.PluginSdk"
+                    Version="2.3.0"
+                    PrivateAssets="all"
+                    ExcludeAssets="runtime" />
+</ItemGroup>
+```
+
+然后在插件目录执行一次还原，并把刚才的包目录作为源：
+
+```powershell
+dotnet restore --source "D:\src\FFmpegFreeUI-API-Extended-Edition\artifacts\packages"
+```
+
+`PrivateAssets="all"` 防止 SDK 继续传递给引用插件项目的其他工程；`ExcludeAssets="runtime"` 只保留编译合同，避免将 SDK 私有副本复制到插件输出。使用包引用时，部署目标通过 `buildTransitive` 自动导入，不再需要手写 `<Import>`。将来把同一个包发布到 NuGet.org 或 GitHub Packages 后，只需改包源，不需要改变项目结构。
 
 ## 4. 实现插件入口
 
@@ -259,23 +356,24 @@ End Class
 | `Pipeline` | 处理链注册表。 |
 | `Behaviors` | 原生稳定行为点注册表。 |
 | `Resources` | 共享资源访问声明和冲突协调注册表。 |
+| `ParameterPanel` | v2.3 参数页、全部原生控件及其稳定锚点目录。 |
+| `Commands` | v2.3 声明式 FFmpeg 参数和外部命令步骤注册表。 |
 | `Log(level, message, exception)` | 写插件诊断信息；当前实现输出到调试器，不等同于任务日志。 |
 
-v2.3 为保持已编译 v2.2 插件的二进制兼容，没有向上述旧接口直接追加成员。需要新能力时先检查版本，再转换为派生接口：
+v2.3 直接把新能力加入基础宿主接口，插件不需要额外转换接口。使用新成员前仍应检查宿主能力版本：
 
 ```csharp
-if (host.ApiVersion < new Version(2, 3, 0) ||
-    host is not IExtFFmpegFreeUIHostV23 extHost)
+if (host.ApiVersion < new Version(2, 3, 0))
 {
     throw new NotSupportedException("需要 Ext Plugin API 2.3");
 }
 
-var pages = extHost.ParameterPanel.AvailablePages;
-var controls = extHost.ParameterPanel.AvailableControls;
-var commands = extHost.Commands;
+var pages = host.ParameterPanel.AvailablePages;
+var controls = host.ParameterPanel.AvailableControls;
+var commands = host.Commands;
 ```
 
-`IExtFFmpegFreeUIHostV23.ParameterPanel` 是参数页/控件目录，`Commands` 是声明式参数和外部命令步骤注册表。只使用旧成员的插件无需重新编译；面向 v2.3 编译的插件也应通过派生接口转换发现能力，不要假定基础接口增加了成员。
+已编译的 v2.2 插件只消费旧成员，仍可直接运行；v2.3 插件通过 `ApiVersion` 声明最低能力要求。第三方不应自行实现宿主接口，测试替身需要在重新编译时补充两个新成员。
 
 `ExtPluginLogLevel` 包含：
 
@@ -474,7 +572,7 @@ private static Control? DecorateQualityValue(IExtPluginUiContext context)
 
 ### 6.7 v2.3 参数面板目录与全部控件
 
-`IExtFFmpegFreeUIHostV23.ParameterPanel` 提供两个只读快照：
+`IExtFFmpegFreeUIHost.ParameterPanel` 提供两个只读快照：
 
 | 集合 | 描述符关键字段 |
 |---|---|
@@ -497,8 +595,7 @@ ID 规则由 `ExtFFmpegFreeUIParameterPanelIds` 定义：
 private readonly ConcurrentDictionary<string, (string? Description, EventHandler Changed)>
     _audioEncoderSnapshots = new(StringComparer.OrdinalIgnoreCase);
 
-var extHost = (IExtFFmpegFreeUIHostV23)host;
-var descriptor = extHost.ParameterPanel.AvailableControls.FirstOrDefault(x =>
+var descriptor = host.ParameterPanel.AvailableControls.FirstOrDefault(x =>
     x.PageId.Equals("audio", StringComparison.OrdinalIgnoreCase) &&
     x.ControlName == "MCB_音频编码器");
 
@@ -542,7 +639,7 @@ if (descriptor is not null)
 使用页面描述符的顶部或底部锚点，无需修改设计器，也无需依赖页面私有布局：
 
 ```csharp
-var audioPage = extHost.ParameterPanel.AvailablePages
+var audioPage = host.ParameterPanel.AvailablePages
     .FirstOrDefault(x => x.PageId == "audio");
 if (audioPage is not null)
 {
@@ -669,7 +766,7 @@ End Function
 | `AfterOutput` | 输出目标之后。 |
 
 ```csharp
-_registrations.Add(extHost.Commands.RegisterParameterProvider(
+_registrations.Add(host.Commands.RegisterParameterProvider(
     new ExtPluginCommandParameterProvider("write-comment", context =>
     {
         var state = JsonSerializer.Deserialize<MyState>(context.PluginStateJson);
@@ -702,7 +799,7 @@ _registrations.Add(extHost.Commands.RegisterParameterProvider(
 插件需要在编码前后运行独立程序时，应通过 `RegisterStepProvider` 声明步骤，不要在命令预览回调中直接 `Process.Start`：
 
 ```csharp
-_registrations.Add(extHost.Commands.RegisterStepProvider(
+_registrations.Add(host.Commands.RegisterStepProvider(
     new ExtPluginCommandStepProvider("prepare-sidecar", context =>
     {
         if (!FeatureEnabled(context.PluginStateJson)) return;
@@ -1093,7 +1190,65 @@ dotnet build .\MyCompany.MyPlugin.csproj -c Debug --no-restore
 
 VB.NET 项目把扩展名改为 `.vbproj`。
 
-### 17.2 安装
+### 17.2 一键部署
+
+仓库提供 `ExtDeployFFmpegFreeUIPlugin` MSBuild 目标，作用类似 Maven 的插件部署阶段：它先执行 `Build`，再把入口 `*.3fui.dll`、`ReferenceCopyLocalPaths` 中的插件依赖、运行时资源、标记为复制到输出目录的内容，以及可选 PDB 增量复制到目标程序的 `Plugin` 目录。
+
+使用 `ProjectReference` 或 DLL 引用时，在插件项目末尾导入目标：
+
+```xml
+<Import Project="路径\FFmpegFreeUI.Ext.PluginSdk.Deploy.targets" />
+```
+
+使用 SDK `PackageReference` 时该目标由包自动导入，不需要这行。然后在当前 PowerShell 会话配置一次 FFmpegFreeUI 根目录：
+
+```powershell
+$env:EXT_FFMPEGFREEUI_INSTALL_DIR = "D:\Apps\FFmpegFreeUI-API-Extended-Edition"
+```
+
+一条命令完成还原后的编译和部署：
+
+```powershell
+dotnet build .\MyCompany.MyPlugin.csproj `
+  -c Debug --no-restore -t:ExtDeployFFmpegFreeUIPlugin
+```
+
+也可以不设置环境变量，直接传 MSBuild 属性：
+
+```powershell
+dotnet build .\MyCompany.MyPlugin.csproj `
+  -c Release -t:ExtDeployFFmpegFreeUIPlugin `
+  -p:ExtFFmpegFreeUIInstallDir="D:\Apps\FFmpegFreeUI-API-Extended-Edition"
+```
+
+如果希望在 IDE 中每次普通构建后自动部署，可在只供本机使用的项目配置中加入：
+
+```xml
+<PropertyGroup>
+  <ExtFFmpegFreeUIAutoDeploy>true</ExtFFmpegFreeUIAutoDeploy>
+</PropertyGroup>
+```
+
+建议把安装路径放在环境变量或不提交版本控制的本机配置中，不要把个人绝对路径提交到公共插件仓库。Debug 默认部署 PDB，Release 默认不部署；可用 `ExtFFmpegFreeUIDeploySymbols=true/false` 覆盖。
+
+部署目标的安全规则：
+
+- 要求目标根目录存在 `FFmpegFreeUI.exe`、匹配的 Ext SDK 和 PluginHost，防止复制到错误目录；
+- 要求插件 `AssemblyName` 以 `.3fui` 结尾；
+- 不复制 SDK、PluginHost、FFmpegFreeUI 主程序集或 LakeUI 的插件私有副本；
+- 不清空 `Plugin`，也不删除其他插件，只覆盖本次同名输出并跳过未变化文件；
+- 依赖被删除或改名后，旧文件不会自动清理，需要开发者确认目标后手动移除；
+- 部署前应退出 FFmpegFreeUI，否则正在使用的 DLL 可能被锁定并导致复制失败。
+
+两个仓库示例已经导入该目标，可以直接用于验证：
+
+```powershell
+dotnet build .\Samples\FFmpegFreeUI.Ext.PluginApi.Sample\FFmpegFreeUI.Ext.PluginApi.Sample.csproj `
+  -c Release -t:ExtDeployFFmpegFreeUIPlugin `
+  -p:ExtFFmpegFreeUIInstallDir="D:\Apps\FFmpegFreeUI-API-Extended-Edition"
+```
+
+### 17.3 手动安装
 
 1. 完全退出 FFmpegFreeUI。
 2. 确认程序根目录存在匹配版本的 `FFmpegFreeUI.Ext.PluginHost.dll` 和
@@ -1103,7 +1258,7 @@ VB.NET 项目把扩展名改为 `.vbproj`。
 
 不要把示例或插件输出目录中的 SDK 再复制一份到 `Plugin`。
 
-### 17.3 调试
+### 17.4 调试
 
 推荐在 IDE 中将启动程序设置为 `FFmpegFreeUI.exe`，在下面位置设置断点：
 
@@ -1191,7 +1346,7 @@ VB.NET 项目把扩展名改为 `.vbproj`。
 
 ### 如何给音频参数页或其他页面增加控件
 
-转换到 `IExtFFmpegFreeUIHostV23`，从 `ParameterPanel.AvailablePages` 找到页面，再把普通 `ExtPluginUiExtension` 注册到 `TopAnchorId` 或 `BottomAnchorId`。需要修改已有控件时从 `AvailableControls` 找描述符，并注册到其 `AnchorId`；不要反射宿主私有字段。
+直接从 `host.ParameterPanel.AvailablePages` 找到页面，再把普通 `ExtPluginUiExtension` 注册到 `TopAnchorId` 或 `BottomAnchorId`。需要修改已有控件时从 `AvailableControls` 找描述符，并注册到其 `AnchorId`；不要反射宿主私有字段。
 
 ### 编码完成后计算 VMAF 或校验和用哪个阶段
 
@@ -1218,8 +1373,7 @@ VB.NET 项目把扩展名改为 `.vbproj`。
 | 类型 | 用途 |
 |---|---|
 | `IExtFFmpegFreeUIPlugin` | 插件入口：`Id`、`DisplayName`、`Initialize`。 |
-| `IExtFFmpegFreeUIHost` | 版本、日志、UI、处理链、行为点和资源注册表。 |
-| `IExtFFmpegFreeUIHostV23` | 二进制兼容派生接口；追加 `ParameterPanel` 和 `Commands`。 |
+| `IExtFFmpegFreeUIHost` | 版本、日志、UI、处理链、行为点、资源、参数面板和命令注册表。 |
 | `IExtPluginParameterPanelCatalog` | 当前全部参数页面和原生控件描述符。 |
 | `ExtPluginParameterPageDescriptor` / `ExtPluginParameterControlDescriptor` | 页面插槽、控件锚点、类型、默认值属性和资源 ID。 |
 | `ExtPluginControlAccess` | 不依赖 LakeUI 的公共控件属性读写辅助器。 |

@@ -1,0 +1,95 @@
+<Project>
+
+  <!--
+    可复用的 Ext 插件部署目标。
+    显式执行：dotnet build -t:ExtDeployFFmpegFreeUIPlugin
+    自动部署：设置 ExtFFmpegFreeUIAutoDeploy=true 后执行普通 Build。
+  -->
+  <PropertyGroup>
+    <ExtFFmpegFreeUIInstallDir Condition="'$(ExtFFmpegFreeUIInstallDir)' == ''">$(EXT_FFMPEGFREEUI_INSTALL_DIR)</ExtFFmpegFreeUIInstallDir>
+    <ExtFFmpegFreeUIAutoDeploy Condition="'$(ExtFFmpegFreeUIAutoDeploy)' == ''">false</ExtFFmpegFreeUIAutoDeploy>
+    <ExtFFmpegFreeUIDeploySymbols Condition="'$(ExtFFmpegFreeUIDeploySymbols)' == '' and '$(Configuration)' == 'Debug'">true</ExtFFmpegFreeUIDeploySymbols>
+    <ExtFFmpegFreeUIDeploySymbols Condition="'$(ExtFFmpegFreeUIDeploySymbols)' == ''">false</ExtFFmpegFreeUIDeploySymbols>
+  </PropertyGroup>
+
+  <Target Name="_ExtValidateFFmpegFreeUIPluginDeployment">
+    <Error Condition="'$(ExtFFmpegFreeUIInstallDir)' == ''"
+           Text="[FFmpegFreeUI Ext] 未配置 ExtFFmpegFreeUIInstallDir。请设置该 MSBuild 属性或 EXT_FFMPEGFREEUI_INSTALL_DIR 环境变量。" />
+    <Error Condition="$([System.String]::Copy('$(TargetName)').ToLowerInvariant().EndsWith('.3fui')) != 'True'"
+           Text="[FFmpegFreeUI Ext] AssemblyName 必须以 .3fui 结尾，当前为 $(TargetName)。" />
+
+    <PropertyGroup>
+      <_FFmpegFreeUIExtResolvedInstallDir>$([System.IO.Path]::GetFullPath('$(ExtFFmpegFreeUIInstallDir)'))</_FFmpegFreeUIExtResolvedInstallDir>
+      <_FFmpegFreeUIExtResolvedPluginDir>$([System.IO.Path]::Combine('$(_FFmpegFreeUIExtResolvedInstallDir)', 'Plugin'))</_FFmpegFreeUIExtResolvedPluginDir>
+    </PropertyGroup>
+
+    <Error Condition="!Exists('$(_FFmpegFreeUIExtResolvedInstallDir)')"
+           Text="[FFmpegFreeUI Ext] FFmpegFreeUI 安装目录不存在：$(_FFmpegFreeUIExtResolvedInstallDir)" />
+    <Error Condition="!Exists('$(_FFmpegFreeUIExtResolvedInstallDir)\FFmpegFreeUI.exe')"
+           Text="[FFmpegFreeUI Ext] 目标目录中没有 FFmpegFreeUI.exe：$(_FFmpegFreeUIExtResolvedInstallDir)" />
+    <Error Condition="!Exists('$(_FFmpegFreeUIExtResolvedInstallDir)\FFmpegFreeUI.Ext.PluginSdk.dll')"
+           Text="[FFmpegFreeUI Ext] 目标程序缺少 FFmpegFreeUI.Ext.PluginSdk.dll，请先安装匹配版本的 Ext 发行包。" />
+    <Error Condition="!Exists('$(_FFmpegFreeUIExtResolvedInstallDir)\FFmpegFreeUI.Ext.PluginHost.dll')"
+           Text="[FFmpegFreeUI Ext] 目标程序缺少 FFmpegFreeUI.Ext.PluginHost.dll，请先安装匹配版本的 Ext 发行包。" />
+  </Target>
+
+  <Target Name="_ExtDeployFFmpegFreeUIPluginCore"
+          DependsOnTargets="_ExtValidateFFmpegFreeUIPluginDeployment;ResolveReferences">
+    <ItemGroup>
+      <_FFmpegFreeUIExtDeployFile Include="$(TargetPath)">
+        <DeployRelativePath>$(TargetFileName)</DeployRelativePath>
+      </_FFmpegFreeUIExtDeployFile>
+
+      <_FFmpegFreeUIExtDeployFile Include="$(TargetDir)$(TargetName).pdb"
+                                  Condition="'$(ExtFFmpegFreeUIDeploySymbols)' == 'true' and Exists('$(TargetDir)$(TargetName).pdb')">
+        <DeployRelativePath>$(TargetName).pdb</DeployRelativePath>
+      </_FFmpegFreeUIExtDeployFile>
+
+      <_FFmpegFreeUIExtDeployFile Include="@(ReferenceCopyLocalPaths)"
+                                  Condition="Exists('%(ReferenceCopyLocalPaths.FullPath)')">
+        <DeployRelativePath Condition="'%(ReferenceCopyLocalPaths.DestinationSubPath)' != ''">%(ReferenceCopyLocalPaths.DestinationSubPath)</DeployRelativePath>
+        <DeployRelativePath Condition="'%(ReferenceCopyLocalPaths.DestinationSubPath)' == ''">%(ReferenceCopyLocalPaths.Filename)%(ReferenceCopyLocalPaths.Extension)</DeployRelativePath>
+      </_FFmpegFreeUIExtDeployFile>
+
+      <_FFmpegFreeUIExtDeployFile Include="@(RuntimeCopyLocalItems)"
+                                  Condition="Exists('%(RuntimeCopyLocalItems.FullPath)')">
+        <DeployRelativePath Condition="'%(RuntimeCopyLocalItems.DestinationSubPath)' != ''">%(RuntimeCopyLocalItems.DestinationSubPath)</DeployRelativePath>
+        <DeployRelativePath Condition="'%(RuntimeCopyLocalItems.DestinationSubPath)' == ''">%(RuntimeCopyLocalItems.Filename)%(RuntimeCopyLocalItems.Extension)</DeployRelativePath>
+      </_FFmpegFreeUIExtDeployFile>
+
+      <_FFmpegFreeUIExtDeployFile Include="@(ContentWithTargetPath)"
+                                  Condition="'%(ContentWithTargetPath.CopyToOutputDirectory)' != '' and Exists('%(ContentWithTargetPath.FullPath)')">
+        <DeployRelativePath>%(ContentWithTargetPath.TargetPath)</DeployRelativePath>
+      </_FFmpegFreeUIExtDeployFile>
+
+      <!-- 这些程序集由宿主根目录统一提供，禁止把插件私有副本部署进 Plugin。 -->
+      <_FFmpegFreeUIExtDeployFile Remove="@(_FFmpegFreeUIExtDeployFile)"
+                                  Condition="'%(_FFmpegFreeUIExtDeployFile.Filename)' == 'FFmpegFreeUI.Ext.PluginSdk' or
+                                             '%(_FFmpegFreeUIExtDeployFile.Filename)' == 'FFmpegFreeUI.Ext.PluginHost' or
+                                             '%(_FFmpegFreeUIExtDeployFile.Filename)' == 'FFmpegFreeUI' or
+                                             '%(_FFmpegFreeUIExtDeployFile.Filename)' == 'LakeUI'" />
+    </ItemGroup>
+
+    <RemoveDuplicates Inputs="@(_FFmpegFreeUIExtDeployFile)">
+      <Output TaskParameter="Filtered" ItemName="_FFmpegFreeUIExtUniqueDeployFile" />
+    </RemoveDuplicates>
+
+    <MakeDir Directories="$(_FFmpegFreeUIExtResolvedPluginDir)" />
+    <Copy SourceFiles="@(_FFmpegFreeUIExtUniqueDeployFile)"
+          DestinationFiles="@(_FFmpegFreeUIExtUniqueDeployFile->'$(_FFmpegFreeUIExtResolvedPluginDir)\%(DeployRelativePath)')"
+          SkipUnchangedFiles="true"
+          Retries="2"
+          RetryDelayMilliseconds="250" />
+    <Message Importance="high"
+             Text="[FFmpegFreeUI Ext] 已部署 $(TargetFileName) 及插件依赖到 $(_FFmpegFreeUIExtResolvedPluginDir)" />
+  </Target>
+
+  <Target Name="ExtDeployFFmpegFreeUIPlugin"
+          DependsOnTargets="Build;_ExtDeployFFmpegFreeUIPluginCore" />
+
+  <Target Name="_ExtAutoDeployFFmpegFreeUIPlugin"
+          AfterTargets="Build"
+          Condition="'$(ExtFFmpegFreeUIAutoDeploy)' == 'true'"
+          DependsOnTargets="_ExtDeployFFmpegFreeUIPluginCore" />
+
+</Project>
