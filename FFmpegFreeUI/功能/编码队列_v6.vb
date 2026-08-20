@@ -737,11 +737,11 @@ Public Class 编码队列_v6
         If task Is Nothing Then Return ""
         Dim lines As New List(Of String)
         If task.步骤.Count > 0 Then
-            lines.AddRange(task.步骤.Select(Function(x) $"{预设管理_v6.获取命令行进程名(x.阶段)} {x.命令行}"))
+            lines.AddRange(task.步骤.Select(Function(x) $"{预设管理_v6.获取命令行进程名(x.阶段, x.进程文件名)} {x.命令行}"))
         ElseIf task.预设数据 IsNot Nothing Then
             Dim output = If(task.输出文件 <> "", task.输出文件, 计算输出位置_v6(task.输入文件, task.预设数据))
             lines.AddRange(预设管理_v6.生成阶段化命令行(task.预设数据, task.输入文件, output, 帧服务器脚本后缀:=task.ID).
-                Select(Function(x) $"{预设管理_v6.获取命令行进程名(x.阶段)} {x.命令行}"))
+                Select(Function(x) $"{预设管理_v6.获取命令行进程名(x.阶段, x.进程文件名)} {x.命令行}"))
         ElseIf task.命令行 <> "" Then
             lines.Add($"{预设管理_v6.获取命令行进程名(预设数据_v6.命令行阶段.普通单次)} {task.命令行}")
         End If
@@ -756,16 +756,25 @@ Public Class 编码队列_v6
         ElseIf task.预设数据 IsNot Nothing Then
             Dim output = If(task.输出文件 <> "", task.输出文件, 计算输出位置_v6(task.输入文件, task.预设数据))
             lines.AddRange(预设管理_v6.生成阶段化命令行(task.预设数据, task.输入文件, output, 帧服务器脚本后缀:=task.ID).
-                Select(Function(x) 格式化实际执行命令行(x.阶段, x.命令行)))
+                Select(Function(x) 格式化实际执行命令行(x.阶段, x.命令行, x.进程文件名, x.使用宿主FFmpeg参数包装)))
         ElseIf task.命令行 <> "" Then
             lines.Add(格式化实际执行命令行(预设数据_v6.命令行阶段.普通单次, task.命令行))
         End If
         Return String.Join(vbCrLf, lines)
     End Function
 
-    Private Shared Function 格式化实际执行命令行(stage As 预设数据_v6.命令行阶段, arguments As String) As String
-        Dim processName = If(stage = 预设数据_v6.命令行阶段.FFprobe获取时长, "ffprobe", If(设置_v6.实例对象.替代进程文件名 <> "", 设置_v6.实例对象.替代进程文件名, "ffmpeg"))
-        Dim actualArgs = If(stage = 预设数据_v6.命令行阶段.FFprobe获取时长 OrElse 设置_v6.实例对象.覆盖参数传递 = "", arguments, 设置_v6.实例对象.覆盖参数传递.Replace("<args>", arguments))
+    Private Shared Function 格式化实际执行命令行(stage As 预设数据_v6.命令行阶段,
+                                          arguments As String,
+                                          Optional specifiedProcess As String = "",
+                                          Optional useHostFFmpegArgumentWrapper As Boolean = True) As String
+        Dim processName = If(Not String.IsNullOrWhiteSpace(specifiedProcess),
+                             specifiedProcess,
+                             If(stage = 预设数据_v6.命令行阶段.FFprobe获取时长, "ffprobe", If(设置_v6.实例对象.替代进程文件名 <> "", 设置_v6.实例对象.替代进程文件名, "ffmpeg")))
+        Dim actualArgs = If(Not useHostFFmpegArgumentWrapper OrElse
+                            stage = 预设数据_v6.命令行阶段.FFprobe获取时长 OrElse
+                            设置_v6.实例对象.覆盖参数传递 = "",
+                            arguments,
+                            设置_v6.实例对象.覆盖参数传递.Replace("<args>", arguments))
         Return 格式化进程文件名(processName) & If(String.IsNullOrWhiteSpace(actualArgs), "", " " & actualArgs)
     End Function
 
@@ -774,7 +783,11 @@ Public Class 编码队列_v6
         If Not String.IsNullOrWhiteSpace(stepItem.实际执行文件名) Then
             Return 格式化进程文件名(stepItem.实际执行文件名) & If(String.IsNullOrWhiteSpace(stepItem.实际执行参数), "", " " & stepItem.实际执行参数)
         End If
-        Return 格式化实际执行命令行(stepItem.阶段, stepItem.命令行)
+        Return 格式化实际执行命令行(
+            stepItem.阶段,
+            stepItem.命令行,
+            stepItem.进程文件名,
+            stepItem.使用宿主FFmpeg参数包装)
     End Function
 
     Private Shared Function 格式化进程文件名(value As String) As String
@@ -1492,7 +1505,7 @@ Public Class 编码任务_v6
 
     Public Async Function 开始Async(执行标识 As Long) As Task
         Dim cancellationToken = 获取当前执行取消令牌(执行标识)
-        Dim 原生步骤全部成功 As Boolean = False
+        Dim 计划步骤全部成功 As Boolean = False
         SyncLock 状态锁
             If Not 正在执行标记 OrElse 执行版本 <> 执行标识 Then Exit Function
             If 手动停止 OrElse 状态 = 编码任务状态_v6.已停止 Then Exit Function
@@ -1579,7 +1592,7 @@ Public Class 编码任务_v6
             End While
 
             If 是当前执行(执行标识) AndAlso 状态 = 编码任务状态_v6.正在处理 Then
-                原生步骤全部成功 = True
+                计划步骤全部成功 = True
                 Dim afterComplete = Ext插件扩展桥接_v2.创建任务管线上下文(Ext插件处理阶段_v2.任务成功之后, Me)
                 afterComplete.TaskStatus = "succeeded"
                 afterComplete.Properties("elapsedMilliseconds") = CLng(任务耗时计时器.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)
@@ -1597,7 +1610,7 @@ Public Class 编码任务_v6
                     手动停止 = True
                     状态 = 编码任务状态_v6.已停止
                     追加日志("[3FUI] 任务已取消", 编码任务日志类别_v6.系统, 当前步骤, False, False)
-                    If Not 原生步骤全部成功 Then 手动停止后清理输出()
+                    If Not 计划步骤全部成功 Then 手动停止后清理输出()
                 End If
             Catch ex As Exception
                 If Not 是当前执行(执行标识) Then Exit Try
@@ -1671,13 +1684,21 @@ Public Class 编码任务_v6
             If item.阶段 = 预设数据_v6.命令行阶段.FFprobe获取时长 AndAlso Not String.IsNullOrWhiteSpace(媒体总时长) Then Continue For
             步骤.Add(New 编码步骤_v6 With {
                 .阶段 = item.阶段,
+                .进程文件名 = item.进程文件名,
+                .工作目录 = item.工作目录,
                 .命令行 = item.命令行,
                 .滤镜图 = item.滤镜图,
                 .映射参数 = item.映射参数,
                 .输出滤镜参数 = item.输出滤镜参数,
                 .需要媒体总时长 = item.需要媒体总时长,
                 .说明 = item.说明,
-                .显示名称 = 获取阶段显示名称(item.阶段)
+                .显示名称 = If(String.IsNullOrWhiteSpace(item.显示名称), 获取阶段显示名称(item.阶段), item.显示名称),
+                .是插件步骤 = item.是插件步骤,
+                .插件ID = item.插件ID,
+                .插件提供器ID = item.插件提供器ID,
+                .插件步骤ID = item.插件步骤ID,
+                .使用宿主FFmpeg参数包装 = item.使用宿主FFmpeg参数包装,
+                .解析FFmpeg进度 = item.解析FFmpeg进度
             })
         Next
     End Sub
@@ -1687,9 +1708,17 @@ Public Class 编码任务_v6
         Dim tcs As New TaskCompletionSource(Of Integer)(TaskCreationOptions.RunContinuationsAsynchronously)
         Dim process As New Process()
         当前进程 = process
-        process.StartInfo.FileName = If(stepItem.阶段 = 预设数据_v6.命令行阶段.FFprobe获取时长, "ffprobe", If(设置_v6.实例对象.替代进程文件名 <> "", 设置_v6.实例对象.替代进程文件名, "ffmpeg"))
-        process.StartInfo.WorkingDirectory = If(设置_v6.实例对象.工作目录 <> "", 设置_v6.实例对象.工作目录, "")
-        process.StartInfo.Arguments = If(stepItem.阶段 = 预设数据_v6.命令行阶段.FFprobe获取时长 OrElse 设置_v6.实例对象.覆盖参数传递 = "", stepItem.命令行, 设置_v6.实例对象.覆盖参数传递.Replace("<args>", stepItem.命令行))
+        process.StartInfo.FileName = If(Not String.IsNullOrWhiteSpace(stepItem.进程文件名),
+                                        stepItem.进程文件名,
+                                        If(stepItem.阶段 = 预设数据_v6.命令行阶段.FFprobe获取时长, "ffprobe", If(设置_v6.实例对象.替代进程文件名 <> "", 设置_v6.实例对象.替代进程文件名, "ffmpeg")))
+        process.StartInfo.WorkingDirectory = If(Not String.IsNullOrWhiteSpace(stepItem.工作目录),
+                                                stepItem.工作目录,
+                                                If(设置_v6.实例对象.工作目录 <> "", 设置_v6.实例对象.工作目录, ""))
+        process.StartInfo.Arguments = If(Not stepItem.使用宿主FFmpeg参数包装 OrElse
+                                         stepItem.阶段 = 预设数据_v6.命令行阶段.FFprobe获取时长 OrElse
+                                         设置_v6.实例对象.覆盖参数传递 = "",
+                                         stepItem.命令行,
+                                         设置_v6.实例对象.覆盖参数传递.Replace("<args>", stepItem.命令行))
         stepItem.实际执行文件名 = process.StartInfo.FileName
         stepItem.实际执行参数 = process.StartInfo.Arguments
         process.StartInfo.UseShellExecute = False
@@ -1707,6 +1736,10 @@ Public Class 编码任务_v6
         beforeStart.CommandLine = process.StartInfo.Arguments
         beforeStart.PhaseName = stepItem.显示名称
         beforeStart.Properties("commandStage") = stepItem.阶段.ToString()
+        beforeStart.Properties("isPluginStep") = If(stepItem.是插件步骤, "true", "false")
+        beforeStart.Properties("pluginId") = stepItem.插件ID
+        beforeStart.Properties("pluginProviderId") = stepItem.插件提供器ID
+        beforeStart.Properties("pluginStepId") = stepItem.插件步骤ID
         Await Ext插件扩展桥接_v2.执行异步阶段Async(Ext插件处理阶段_v2.启动进程之前, beforeStart, cancellationToken).ConfigureAwait(False)
         cancellationToken.ThrowIfCancellationRequested()
         process.StartInfo.FileName = beforeStart.ProcessFileName
@@ -1739,6 +1772,10 @@ Public Class 编码任务_v6
         afterExit.PhaseName = stepItem.显示名称
         afterExit.ExitCode = exitCode
         afterExit.Properties("commandStage") = stepItem.阶段.ToString()
+        afterExit.Properties("isPluginStep") = If(stepItem.是插件步骤, "true", "false")
+        afterExit.Properties("pluginId") = stepItem.插件ID
+        afterExit.Properties("pluginProviderId") = stepItem.插件提供器ID
+        afterExit.Properties("pluginStepId") = stepItem.插件步骤ID
         Await Ext插件扩展桥接_v2.执行异步阶段Async(Ext插件处理阶段_v2.进程退出之后, afterExit, cancellationToken).ConfigureAwait(False)
         Return afterExit.ExitCode.GetValueOrDefault(exitCode)
     End Function
@@ -1747,14 +1784,14 @@ Public Class 编码任务_v6
         If line Is Nothing Then Exit Sub
         stepItem.输出缓存.Add(line)
         If stepItem.输出缓存.Count > 2000 Then stepItem.输出缓存.RemoveRange(0, stepItem.输出缓存.Count - 1000)
-        If line.Contains("Duration:", StringComparison.OrdinalIgnoreCase) Then
+        If stepItem.解析FFmpeg进度 AndAlso line.Contains("Duration:", StringComparison.OrdinalIgnoreCase) Then
             Dim detectedDuration = 编码进度_v6.提取媒体总时长(line)
             If String.IsNullOrWhiteSpace(媒体总时长) AndAlso detectedDuration > TimeSpan.Zero Then
                 媒体总时长 = detectedDuration.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture)
             End If
             进度.解析FFmpeg输出(line, 计算当前总时长())
         End If
-        Dim isProgressLine = 编码队列_v6.是否进度输出(line)
+        Dim isProgressLine = stepItem.解析FFmpeg进度 AndAlso 编码队列_v6.是否进度输出(line)
         If isProgressLine Then
             进度.解析FFmpeg输出(line, 计算当前总时长())
         End If
@@ -1841,7 +1878,7 @@ Public Class 编码任务_v6
                 cancellationSource = 当前执行取消源
             End SyncLock
             cancellationSource?.Cancel()
-            If process IsNot Nothing AndAlso Not process.HasExited Then process.Kill()
+            If process IsNot Nothing AndAlso Not process.HasExited Then process.Kill(entireProcessTree:=True)
             任务耗时计时器.Stop()
             追加日志("[3FUI] 正在停止任务", 编码任务日志类别_v6.系统, 当前步骤, False, False)
             编码队列_v6.通知任务更新(Me)
@@ -1879,7 +1916,7 @@ Public Class 编码任务_v6
     Private Sub 释放进程()
         Try
             If 当前进程 IsNot Nothing Then
-                If Not 当前进程.HasExited Then 当前进程.Kill()
+                If Not 当前进程.HasExited Then 当前进程.Kill(entireProcessTree:=True)
                 当前进程.Dispose()
             End If
         Catch
@@ -2009,6 +2046,8 @@ End Class
 Public Class 编码步骤_v6
     Public Property 阶段 As 预设数据_v6.命令行阶段 = 预设数据_v6.命令行阶段.普通单次
     Public Property 显示名称 As String = ""
+    Public Property 进程文件名 As String = ""
+    Public Property 工作目录 As String = ""
     Public Property 命令行 As String = ""
     Public Property 实际执行文件名 As String = ""
     Public Property 实际执行参数 As String = ""
@@ -2017,6 +2056,12 @@ Public Class 编码步骤_v6
     Public Property 输出滤镜参数 As String = ""
     Public Property 需要媒体总时长 As Boolean = False
     Public Property 说明 As String = ""
+    Public Property 是插件步骤 As Boolean = False
+    Public Property 插件ID As String = ""
+    Public Property 插件提供器ID As String = ""
+    Public Property 插件步骤ID As String = ""
+    Public Property 使用宿主FFmpeg参数包装 As Boolean = True
+    Public Property 解析FFmpeg进度 As Boolean = True
     Public Property 状态 As 编码步骤状态_v6 = 编码步骤状态_v6.未处理
     Public Property 输出缓存 As New List(Of String)
 End Class

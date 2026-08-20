@@ -1,10 +1,12 @@
-# FFmpegFreeUI Ext Plugin API v2.2 插件开发指南
+# FFmpegFreeUI Ext Plugin API v2.3 插件开发指南
 
-本文面向希望扩展 FFmpegFreeUI 原生参数界面和任务处理链的插件开发者，对应当前 Ext Plugin API `2.2.0`。插件只需要面向`FFmpegFreeUI.Ext.PluginSdk.dll` 的公共类型编程，不应引用`FFmpegFreeUI.exe` 的内部类型，也不应通过反射查找 FFmpegFreeUI 的私有控件或方法。
+本文面向希望扩展 FFmpegFreeUI 原生参数界面和任务处理链的插件开发者，对应当前 Ext Plugin API `2.3.0`。插件只需要面向`FFmpegFreeUI.Ext.PluginSdk.dll` 的公共类型编程，不应引用`FFmpegFreeUI.exe` 的内部类型，也不应通过反射查找 FFmpegFreeUI 的私有控件或方法。
 
-Ext Plugin API v2.2 提供四类能力：
+Ext Plugin API v2.3 提供六类能力：
 
-- 安全 UI 扩展：向宿主管理的原生下拉框添加稳定选项，或在稳定锚点插入下拉框、输入框、按钮等 WinForms 控件。
+- 参数面板目录：发现全部参数页和原生控件，并通过公开属性辅助器读取、修改、装饰或替换控件。
+- 安全 UI 扩展：向宿主管理的原生下拉框添加稳定选项，或在任一参数页顶部/底部插入 WinForms 控件。
+- 声明式命令：向 FFmpeg 命令的稳定位置贡献参数，或向任务计划贡献由队列托管的外部进程步骤。
 - 处理链扩展：在预设、入队、任务准备、命令生成、进程执行和任务终态阶段注册有序处理器。
 - 行为点扩展：在公开的原生联动逻辑之前、之后有序调整上下文，或独占替换一段原生行为。
 - 资源冲突协调：插件在深度修改共享 UI、逻辑、预设或命令时声明访问模式，宿主在注册阶段拒绝不兼容组合。
@@ -52,7 +54,8 @@ Plugin\
 - 插件自己的托管依赖可以放在 `Plugin`；不要复制另一份 SDK、PluginHost、LakeUI 或宿主自带依赖。
 - 根目录缺少 `FFmpegFreeUI.Ext.PluginSdk.dll` 时，Ext Plugin API v2 会安全禁用。依赖 SDK 的插件会在程序集加载之前被静默跳过，FFmpegFreeUI 本体仍可运行。
 - 根目录缺少 `FFmpegFreeUI.Ext.PluginHost.dll`、版本不兼容或初始化失败时，v2 同样安全禁用。
-- 当前桥接层要求 SDK 和 PluginHost 都是 `2.2.0` 或更高的 `2.x` 版本，并要求二者主、次版本一致；例如 `2.2.x` SDK 必须搭配 `2.2.x` Host。
+- 当前桥接层接受 `2.2.0` 或更高的 `2.x` 组件，并要求 SDK 与 PluginHost 的主、次版本一致；当前发行包应使用 `2.3.x` SDK 搭配 `2.3.x` Host。
+- 新主程序若误配成完整的 `2.2.x` SDK/Host 组合，会保留 v2.2 插件与处理链，v2.3 参数目录和声明式命令则安全降级为空；这只用于容错，发布时不要混装版本。
 - 只提供 `Entry` / `SetHost_*` 的插件仍走官方兼容逻辑；需要补充能力时，可以在同一程序集内再实现 `IExtFFmpegFreeUIPlugin`，无需放弃官方接口。
 
 ### 为什么同时需要 PluginSdk 和 PluginHost
@@ -70,12 +73,12 @@ Plugin\
 
 当前项目使用 Windows、.NET 10 和 WinForms。可使用 Visual Studio、Rider、Visual Studio Code 或 `dotnet` 命令行。
 
-仓库提供两套可直接编译的全接口示例：
+仓库提供两套可直接编译的示例：
 
-- [C# 综合示例](../Samples/FFmpegFreeUI.Ext.PluginApi.Sample)：自动质量策略、命令/进程处理和 SHA-256 后处理。
-- [VB.NET 综合示例](../Samples/FFmpegFreeUI.Ext.PluginApi.VbVmafSample)：自动质量策略、命令/进程处理和 VMAF 后处理。
+- [C# v2.3 综合示例](../Samples/FFmpegFreeUI.Ext.PluginApi.Sample)：动态参数控件、页面插入、声明式参数/步骤和 SHA-256 后处理。
+- [VB.NET v2.2 兼容基线示例](../Samples/FFmpegFreeUI.Ext.PluginApi.VbVmafSample)：传统锚点、命令/进程处理和 VMAF 后处理。
 
-两套示例都覆盖当前全部 6 个 UI 锚点、1 个安全下拉框锚点、1 个行为点、资源声明和 14 个处理阶段。遇到文档与行为不一致时，以当前 SDK 公共合同和可编译示例为准。
+C# 示例覆盖 v2.3 新能力以及 6 个传统 UI 锚点、1 个安全下拉框锚点、1 个行为点和 14 个处理阶段；VB.NET 示例用于证明只使用 v2.2 合同的插件仍可在 v2.3 宿主运行。遇到文档与行为不一致时，以当前 SDK 公共合同和可编译示例为准。
 
 ## 3. 从零创建插件项目
 
@@ -258,6 +261,22 @@ End Class
 | `Resources` | 共享资源访问声明和冲突协调注册表。 |
 | `Log(level, message, exception)` | 写插件诊断信息；当前实现输出到调试器，不等同于任务日志。 |
 
+v2.3 为保持已编译 v2.2 插件的二进制兼容，没有向上述旧接口直接追加成员。需要新能力时先检查版本，再转换为派生接口：
+
+```csharp
+if (host.ApiVersion < new Version(2, 3, 0) ||
+    host is not IExtFFmpegFreeUIHostV23 extHost)
+{
+    throw new NotSupportedException("需要 Ext Plugin API 2.3");
+}
+
+var pages = extHost.ParameterPanel.AvailablePages;
+var controls = extHost.ParameterPanel.AvailableControls;
+var commands = extHost.Commands;
+```
+
+`IExtFFmpegFreeUIHostV23.ParameterPanel` 是参数页/控件目录，`Commands` 是声明式参数和外部命令步骤注册表。只使用旧成员的插件无需重新编译；面向 v2.3 编译的插件也应通过派生接口转换发现能力，不要假定基础接口增加了成员。
+
 `ExtPluginLogLevel` 包含：
 
 - `Trace`：高频诊断；
@@ -323,12 +342,14 @@ if (host.Ui.AvailableAnchors.Contains(
 | `AnchorId` | 宿主公开的稳定锚点 ID。优先使用 `ExtFFmpegFreeUIUiAnchors` 常量。 |
 | `Order` | 同一锚点内从小到大排列。相同值再按插件 ID、扩展 ID 排序。 |
 | `CreateControl` | 每个参数面板实例都会调用；插入型返回新控件，装饰型必须返回 `null`/`Nothing`。 |
+| `Cleanup` | v2.3 可选回调；扩展注销或界面销毁时在 UI 线程调用。必须在这里移除给原生控件添加的事件并恢复主动修改的属性。 |
+| `Mode` / `ResourceId` / `ResourceAccess` | 默认只插入/装饰；替换原生控件必须使用 `ReplaceAnchor`，并以描述符给出的资源 ID 申请 `Exclusive`。 |
 
-`AvailableAnchors` 表示宿主支持的锚点合同，不要求参数面板此刻已经打开。插件可以在启动时注册，宿主会在相应界面实例创建后应用扩展。
+`AvailableAnchors` 同时包含 6 个传统合同锚点和 v2.3 当前参数面板目录中的动态锚点。插件加载前主参数面板目录已经建立；仍应在注册前检查目标 ID，便于兼容不同宿主版本。
 
-### 6.3 6 个 UI 锚点
+### 6.3 6 个传统 UI 锚点
 
-当前全部锚点都位于“参数面板 → 视频参数｜质量”。UI 锚点只决定界面位置，不会自动修改预设或处理链；需要持久化和参数生效时，应配合 `StateJson` 与管线阶段。
+这些 v2.2 兼容锚点都位于“参数面板 → 视频参数｜质量”，在 v2.3 中继续原样可用。UI 锚点只决定界面位置，不会自动修改预设或处理链；需要持久化和参数生效时，应配合 `StateJson` 与声明式命令或管线阶段。
 
 | SDK 常量 / ID | 类型与位置 | 可做的事情 | 限制 |
 |---|---|---|---|
@@ -451,6 +472,92 @@ private static Control? DecorateQualityValue(IExtPluginUiContext context)
 
 如果装饰型工厂返回了控件，宿主会释放该控件并报错。
 
+### 6.7 v2.3 参数面板目录与全部控件
+
+`IExtFFmpegFreeUIHostV23.ParameterPanel` 提供两个只读快照：
+
+| 集合 | 描述符关键字段 |
+|---|---|
+| `AvailablePages` | `PageId`、显示名以及该页的 `TopAnchorId` / `BottomAnchorId`。 |
+| `AvailableControls` | `ControlId`、所属页、层级路径、设计器名称、控件类型、`AnchorId`、`ResourceId`、默认值属性名。 |
+
+宿主会收录主参数页、内嵌子页以及已经实例化的画面参数弹窗。页面 ID 包括 `overview`、`presets`、`output`、`decoder`、`video-encoder`、`video-frame`、`video-quality`、`color`、`frame-server`、`audio`、`trim`、`filter-order`、`custom*`、`stream-control`、`additional`、`metadata`、`chapters`、`attachments` 和 `video-frame-*`。不要依靠这段文字穷举；始终枚举 `AvailablePages`。
+
+ID 规则由 `ExtFFmpegFreeUIParameterPanelIds` 定义：
+
+- 页面插槽：`ext.parameters.page.{pageId}.top` / `.bottom`；
+- 控件锚点：`ext.parameters.control.{pageId}.{escaped-control-path}`；
+- 控件资源通常以 `ext.parameters.control-resource.` 开头；存在传统别名时可能返回传统资源 ID，所以必须使用描述符的 `ResourceId`，不要自行拼接。
+
+控件路径以设计器 `Name` 为主，发布后按兼容合同维护。上游新增控件会自然出现在目录；插件必须按 `PageId + ControlName` 或已保存的 `AnchorId` 查找，并在目标缺失时降级，不得按控件序号或私有窗体字段反射查找。
+
+下面示例修改音频编码器控件。目录只提供描述信息；取得真实控件仍统一通过 `Ui.Register`，因此每个参数面板实例都有独立上下文和完整生命周期：
+
+```csharp
+private readonly ConcurrentDictionary<string, (string? Description, EventHandler Changed)>
+    _audioEncoderSnapshots = new(StringComparer.OrdinalIgnoreCase);
+
+var extHost = (IExtFFmpegFreeUIHostV23)host;
+var descriptor = extHost.ParameterPanel.AvailableControls.FirstOrDefault(x =>
+    x.PageId.Equals("audio", StringComparison.OrdinalIgnoreCase) &&
+    x.ControlName == "MCB_音频编码器");
+
+if (descriptor is not null)
+{
+    _registrations.Add(host.Resources.Claim(new ExtPluginResourceClaim(
+        "write-audio-encoder", descriptor.ResourceId,
+        ExtPluginResourceAccess.OrderedTransform)));
+
+    _registrations.Add(host.Ui.Register(new ExtPluginUiExtension(
+        "decorate-audio-encoder", descriptor.AnchorId, context =>
+        {
+            var key = $"{context.SurfaceId}:{context.ExtensionId}";
+            var oldDescription = context.AnchorControl.AccessibleDescription;
+            EventHandler changed = (_, _) => host.Log(
+                ExtPluginLogLevel.Trace, context.AnchorControl.Text);
+            _audioEncoderSnapshots[key] = (oldDescription, changed);
+            context.AnchorControl.AccessibleDescription = "由插件增强";
+            context.AnchorControl.TextChanged += changed;
+            return null;
+        })
+    {
+        Cleanup = context =>
+        {
+            var key = $"{context.SurfaceId}:{context.ExtensionId}";
+            if (!_audioEncoderSnapshots.TryRemove(key, out var snapshot)) return;
+            context.AnchorControl.TextChanged -= snapshot.Changed;
+            if (!context.AnchorControl.IsDisposed)
+                context.AnchorControl.AccessibleDescription = snapshot.Description;
+        }
+    }));
+}
+```
+
+示例按 `SurfaceId + ExtensionId` 分别保存每个界面实例的快照。只改无障碍文本可声明 `OrderedTransform`；完整替换控件必须将 UI 扩展设为 `ReplaceAnchor`，并使用同一 `ResourceId` 的 `Exclusive`。读取可用 `Observe`。修改会影响原生预设捕获的值时，调用 `RequestParameterRefresh()`。
+
+`ExtPluginControlAccess` 可在不引用 LakeUI 的情况下按公开属性读写：`TryGetValue` / `TrySetValue` 使用描述符所示的默认值语义，`TryGetProperty` / `TrySetProperty` 可处理 `Text`、`Checked`、`Value`、`Enabled`、`Visible` 等公共属性并执行常见类型转换。调用方必须处于控件所属 UI 线程。
+
+### 6.8 在任意参数页增加控件
+
+使用页面描述符的顶部或底部锚点，无需修改设计器，也无需依赖页面私有布局：
+
+```csharp
+var audioPage = extHost.ParameterPanel.AvailablePages
+    .FirstOrDefault(x => x.PageId == "audio");
+if (audioPage is not null)
+{
+    _registrations.Add(host.Ui.Register(new ExtPluginUiExtension(
+        "my-audio-options", audioPage.TopAnchorId, context =>
+            new FlowLayoutPanel
+            {
+                AutoSize = true,
+                Controls = { new CheckBox { AutoSize = true, Text = "启用插件参数" } }
+            })));
+}
+```
+
+页面插槽内的插件控件按 `Order → PluginId → ExtensionId` 排列。控件由宿主容器持有并随页面释放；插件订阅其他对象事件时仍应在控件 `Disposed` 或扩展 `Cleanup` 中解绑。
+
 ## 7. 处理链注册与执行规则
 
 ### 7.1 注册处理器
@@ -549,6 +656,81 @@ Private Shared Async Function PrepareQualityCoreAsync(
 End Function
 ```
 
+### 7.5 v2.3 声明式 FFmpeg 参数
+
+能表达为 FFmpeg 参数的扩展应使用 `IExtPluginCommandRegistry.RegisterParameterProvider`，不要再解析和拼接整段 `CommandLine`。宿主会在每次命令构建时调用同步回调，并把结果放入准确位置：
+
+| `ExtPluginCommandArgumentPosition` | 插入位置 |
+|---|---|
+| `Global` | `-hide_banner` 之前，只放 FFmpeg 全局选项。 |
+| `BeforeInput` | 原生输入选项之后、主输入 `-i` 之前。 |
+| `AfterInput` | 主输入和全部附加输入之后、输出选项之前。 |
+| `BeforeOutput` | 原生输出选项之后、输出目标之前。 |
+| `AfterOutput` | 输出目标之后。 |
+
+```csharp
+_registrations.Add(extHost.Commands.RegisterParameterProvider(
+    new ExtPluginCommandParameterProvider("write-comment", context =>
+    {
+        var state = JsonSerializer.Deserialize<MyState>(context.PluginStateJson);
+        if (state?.Enabled == true)
+        {
+            context.Arguments.Add(new ExtPluginCommandArgument(
+                ExtPluginCommandArgumentPosition.BeforeOutput,
+                "-metadata comment=my-plugin")
+            {
+                Order = 100,
+                Description = "写入插件标记"
+            });
+        }
+    })
+    {
+        Order = 100
+    }));
+```
+
+提供器和参数都按 `Order` 排序，相同值再按插件/提供器 ID 稳定排序。宿主自动申请 `ext.command.arguments` 的 `OrderedTransform` 租约。回调可能因参数预览、预设列表、任务准备、重建和二次编码反复执行，必须纯计算、快速、幂等，不能在这里启动进程、访问网络或产生一次性文件。
+
+`ExtPluginCommandContext` 提供 `PluginId`、完整 `PresetJson`、已从 `插件扩展数据[PluginId]` 提取的 `PluginStateJson`、输入/输出路径、任务 ID、阶段名、`IsPreview` 和可扩展 `Properties`。参数文本中的 `<输入文件>` / `<输出文件>` 会按原有通配规则替换。宿主不会对 `Text` 自动加引号；插件必须生成合法的 FFmpeg 参数片段。
+
+参数面板总览、预设命令模板、队列命令快照和真正执行都调用同一提供器，因此不会再出现“插件 UI 有选项，但预览看不到”或“预览与实际执行不同”的分叉。旧的 `ext.command.before-build` / `after-build` 继续兼容，并包围声明式构建：结构化预设变换先运行，声明式参数随后加入，最终原始字符串变换最后运行。
+
+“完全自己写”模式无法可靠猜测任意命令结构。v2.3 支持在模板中显式放置 `ExtFFmpegFreeUICommandPlaceholders` 的五个标记：`<ext:global>`、`<ext:before-input>`、`<ext:after-input>`、`<ext:before-output>`、`<ext:after-output>`。旧模板没有标记时，宿主会兼容性推断：全局/输入前参数放到开头，输入后/输出前参数优先插入 `<输出文件>` 前，输出后参数放到末尾；新模板应显式写标记以避免歧义。
+
+### 7.6 v2.3 插件自定义命令步骤
+
+插件需要在编码前后运行独立程序时，应通过 `RegisterStepProvider` 声明步骤，不要在命令预览回调中直接 `Process.Start`：
+
+```csharp
+_registrations.Add(extHost.Commands.RegisterStepProvider(
+    new ExtPluginCommandStepProvider("prepare-sidecar", context =>
+    {
+        if (!FeatureEnabled(context.PluginStateJson)) return;
+        context.Steps.Add(new ExtPluginCommandStep(
+            "prepare", "准备插件旁车文件", "my-tool.exe",
+            "--input \"<输入文件>\" --output \"<输出文件>.json\"")
+        {
+            Placement = ExtPluginCommandStepPlacement.BeforeNative,
+            WorkingDirectory = AppContext.BaseDirectory,
+            IncludeInPreview = true,
+            ParseFFmpegProgress = false
+        });
+    })));
+```
+
+步骤的身份是“插件 ID + 提供器 ID + 步骤 ID”；同一回调内步骤 ID 必须非空且唯一。`BeforeNative` 在全部原生 FFmpeg 步骤前执行，`AfterNative` 在全部原生步骤后执行。需要先用 ffprobe 取得掐头去尾总时长时，宿主会先只执行探测并重建计划，防止前置插件步骤执行两次。
+
+队列以 `UseShellExecute=false` 直接启动 `ProcessFileName`，不会通过 `cmd`/PowerShell解释，也不会套用“替代 FFmpeg 程序”或“覆盖参数传递”。需要 shell 语法时插件必须明确把 `cmd.exe` 或 PowerShell 作为进程，并负责正确转义。宿主会：
+
+- 在参数模板和预览中显示进程及参数；
+- 捕获标准输出/错误并写入当前步骤日志；
+- 统一支持暂停、恢复、停止和取消；
+- 在每个步骤外继续触发 `ext.process.before-start` / `after-exit`，并在上下文中提供 `isPluginStep`、`pluginId`、`pluginProviderId`、`pluginStepId`；
+- 把非零退出码视为步骤失败，随后按正常任务错误链处理；
+- 仅在 `ParseFFmpegProgress=true` 时把输出交给 FFmpeg 进度解析器。
+
+步骤回调本身仍是同步、可重复的计划生成器；真正工作只由队列执行。外部工具不存在、启动失败或回调抛错都会明确使任务准备/执行失败。原来在 `ext.task.after-complete` 中自行启动子进程的插件继续可用，但那类进程不会自动进入命令模板，也不会自动经过逐步骤日志与 `process.*`；能改成声明式步骤时应优先改用步骤提供器。
+
 ## 8. 原生行为点与深度定制
 
 行为点适合修改一段明确、稳定的原生逻辑。执行顺序固定为：
@@ -628,7 +810,9 @@ ResourceAccess = ExtPluginResourceAccess.Exclusive
     → 每个步骤生成命令：
         ext.command.before-build
           → FFmpegFreeUI 生成该步骤参数
+          → 声明式参数提供器写入稳定位置
           → ext.command.after-build
+    → 命令步骤提供器把 BeforeNative / AfterNative 步骤合入计划
     → ext.task.after-prepare
     → 如果任务数据变化，重新计算输出并重建全部步骤
     → 每个步骤依次执行：
@@ -636,7 +820,7 @@ ResourceAccess = ExtPluginResourceAccess.Exclusive
           → 启动外部进程并等待退出
           → ext.process.after-exit
 
-全部原生步骤成功：
+全部原生和声明式插件步骤成功：
   ext.task.after-complete
     → 全部成功后任务标记已完成
     → 任一后处理失败则任务转为错误
@@ -664,7 +848,7 @@ ResourceAccess = ExtPluginResourceAccess.Exclusive
 | `TaskAfterPrepare` / `ext.task.after-prepare` | 异步；全部步骤首次生成、任何进程启动之前 | `PresetJson`、`InputPath`、`OutputPath`、`CommandLine` | 最终验证或必要的任务修正。上述任务数据变化时，宿主会应用修改并重建全部步骤，所以 `command.*` 会再次运行。 |
 | `ProcessBeforeStart` / `ext.process.before-start` | 异步；进程 `StartInfo` 已创建但尚未 `Start()` | `ProcessFileName`、`CommandLine` | 替换可执行文件、包装命令或做最后一刻调整。不要修改 `PresetJson` 并期待重建。 |
 | `ProcessAfterExit` / `ext.process.after-exit` | 异步；每个进程退出、宿主判断步骤成败之前 | `ExitCode` | 读取真实退出码、清理单步骤文件，或按明确的外部工具协议校正退出码。它不是整个任务完成事件。 |
-| `TaskAfterComplete` / `ext.task.after-complete` | 异步且一次性；全部原生步骤成功、任务标记完成之前 | `ReportProgress`、`ReportResult`；路径和预设主要供读取 | VMAF、校验和、输出验证等可取消成功后处理的首选阶段。抛错会让任务转为错误，之后调用 `ext.task.after-failed` 和 `ext.task.after-finish`。插件自行启动的进程不会再次经过 `process.*`。 |
+| `TaskAfterComplete` / `ext.task.after-complete` | 异步且一次性；全部原生及声明式插件步骤成功、任务标记完成之前 | `ReportProgress`、`ReportResult`；路径和预设主要供读取 | VMAF、校验和、输出验证等可取消成功后处理的兼容阶段。抛错会让任务转为错误，之后调用 `ext.task.after-failed` 和 `ext.task.after-finish`。回调内自行启动的进程不会经过 `process.*`；需要统一托管时改用命令步骤提供器。 |
 | `TaskAfterFailed` / `ext.task.after-failed` | 异步且一次性；任务已确定错误后 | 主要供读取，可 `ReportResult` | 上报失败诊断、保留或清理插件文件。用户取消不触发。使用不可取消令牌，应快速返回；异常只写终态日志，但会中断本阶段后续处理器。 |
 | `TaskAfterFinish` / `ext.task.after-finish` | 异步且一次性；成功、错误或取消的专用阶段之后 | `TaskStatus`、路径供读取，可 `ReportResult` | 无论终态如何都执行的最终清理点，适合释放以 `TaskId` 为键的缓存。使用不可取消令牌，不要执行无限或长时间等待。 |
 
@@ -700,6 +884,8 @@ ResourceAccess = ExtPluginResourceAccess.Exclusive
 | `stepNumber` | 有当前步骤时 | 从 `1` 开始的步骤序号。 |
 | `isFinalStep` | 有当前步骤时 | 小写字符串 `true` / `false`。 |
 | `commandStage` | `ext.process.before-start`、`ext.process.after-exit` | 宿主命令步骤枚举名。 |
+| `isPluginStep` | `ext.process.before-start`、`ext.process.after-exit` | 是否为 v2.3 声明式插件步骤。 |
+| `pluginId` / `pluginProviderId` / `pluginStepId` | 同上；仅插件步骤有非空值 | 当前命令步骤来源。 |
 | `elapsedMilliseconds` | `ext.task.after-complete`、`ext.task.after-failed`、`ext.task.after-finish` | 当前执行经过的毫秒数。 |
 
 插件可以在 `Properties` 中加入自己的临时键，后面的同阶段处理器能看到，但宿主不会持久化未知键，也不保证在另一个阶段重新提供它们。跨阶段数据应放在插件拥有的预设状态，或放在以 `TaskId` 为键的插件内部线程安全缓存中，并在 `ext.task.after-finish` 清理。
@@ -777,7 +963,7 @@ context.ReportResult("bitrate.average", "1842", "平均码率", "kbps")
 
 ## 13. 成功后处理示例
 
-需要在 FFmpeg 全部原生步骤成功后计算质量分数、校验和或生成报告时，使用`ext.task.after-complete`，不要用 `ext.process.after-exit` 猜测“最后一个进程”。
+需要在全部原生及声明式插件步骤成功后计算质量分数、校验和或生成报告时，使用`ext.task.after-complete`，不要用 `ext.process.after-exit` 猜测“最后一个进程”。
 
 ```csharp
 private static async ValueTask VerifyOutputAsync(
@@ -856,8 +1042,9 @@ UI 控件工厂和 UI 事件运行在宿主 UI 线程。任务/进程处理器�
 - `BeforeNative` / `AfterNative` 自动申请行为资源的 `OrderedTransform`。
 - `ReplaceNative` 自动申请行为资源的 `Exclusive`。
 - 预设、命令和任务后处理阶段分别自动映射到 `ext.preset.document`、`ext.command.line`、`ext.task.after-processing`。
+- 声明式参数/步骤提供器分别自动申请 `ext.command.arguments` / `ext.command.plan` 的 `OrderedTransform`。
 - `ReplaceAnchor` 要求插件显式指定父资源并使用 `Exclusive`。
-- 直接通过 `AnchorControl` 修改原生控件时，插件必须手动 `Claim`；宿主无法从任意用户代码自动推断所有写操作。
+- 直接通过 `AnchorControl` 修改原生控件时，插件必须用控件描述符的 `ResourceId` 手动 `Claim`；宿主无法从任意用户代码自动推断所有写操作。
 
 资源冲突只比较不同插件。同一插件可以把一项功能拆成多个内部处理器；它们仍按 `Order` 执行。声明冲突会使后加载插件初始化失败，并显示资源 ID、双方插件 ID 和声明 ID，不会静默覆盖。
 
@@ -884,6 +1071,8 @@ _registrations.Add(host.Resources.Claim(new ExtPluginResourceClaim(
 - 原生控件完成捕获后最终修正预设：`ext.preset.after-capture`。
 - 每个文件入队时快速改任务名或任务快照：`ext.queue.before-add`。
 - 需要媒体探测、网络查询或外部工具后再决定编码参数：`ext.task.before-prepare`。
+- 只需向 FFmpeg 稳定位置追加参数：v2.3 `RegisterParameterProvider`。
+- 需要在原生编码前后执行且应进入预览/队列管理的外部程序：v2.3 `RegisterStepProvider`。
 - 需要结构化调整当前步骤参数：`ext.command.before-build`。
 - 只能修改最终参数字符串：`ext.command.after-build`。
 - 全部步骤生成后必须做最终验证：`ext.task.after-prepare`。
@@ -992,9 +1181,21 @@ VB.NET 项目把扩展名改为 `.vbproj`。
 
 参数预览、总览、任务准备、任务重建、ffprobe 和二次编码都会生成命令。检查 `IsPreview` 和`PhaseName`，保持修改幂等，不要在这些阶段执行一次性外部副作用。
 
+### 插件参数为什么没有出现在预览或命令模板
+
+不要只在按钮点击后私下保存一段字符串，也不要只在 `process.before-start` 临时改参数。把状态写入 `StateJson`，调用 `RequestParameterRefresh()`，再由 `RegisterParameterProvider` 根据 `PluginStateJson` 返回参数。三条链路会得到同一结果。“完全自己写”模板应加入对应的 `<ext:...>` 位置标记。
+
+### 插件要执行自定义命令，应该在哪个回调启动
+
+需要作为编码流程一部分的命令不要在预览、`command.*` 或 UI 回调中启动，应由 `RegisterStepProvider` 返回 `ExtPluginCommandStep`。只有不能表示为固定前/后步骤的复杂成功后处理才继续使用 `ext.task.after-complete` 自行管理进程；后者需要插件自己处理输出、取消、超时和清理。
+
+### 如何给音频参数页或其他页面增加控件
+
+转换到 `IExtFFmpegFreeUIHostV23`，从 `ParameterPanel.AvailablePages` 找到页面，再把普通 `ExtPluginUiExtension` 注册到 `TopAnchorId` 或 `BottomAnchorId`。需要修改已有控件时从 `AvailableControls` 找描述符，并注册到其 `AnchorId`；不要反射宿主私有字段。
+
 ### 编码完成后计算 VMAF 或校验和用哪个阶段
 
-使用 `ext.task.after-complete`。它在全部原生步骤成功后调用一次，并在后处理成功之前不把任务标记为完成。使用 `ReportProgress` 展示进度，使用 `ReportResult` 发布最终分数。
+使用 `ext.task.after-complete`。它在全部原生及声明式插件步骤成功后调用一次，并在后处理成功之前不把任务标记为完成。使用 `ReportProgress` 展示进度，使用 `ReportResult` 发布最终分数。
 
 ### 多个 `ext.task.after-finish` 插件会并发吗
 
@@ -1018,6 +1219,10 @@ VB.NET 项目把扩展名改为 `.vbproj`。
 |---|---|
 | `IExtFFmpegFreeUIPlugin` | 插件入口：`Id`、`DisplayName`、`Initialize`。 |
 | `IExtFFmpegFreeUIHost` | 版本、日志、UI、处理链、行为点和资源注册表。 |
+| `IExtFFmpegFreeUIHostV23` | 二进制兼容派生接口；追加 `ParameterPanel` 和 `Commands`。 |
+| `IExtPluginParameterPanelCatalog` | 当前全部参数页面和原生控件描述符。 |
+| `ExtPluginParameterPageDescriptor` / `ExtPluginParameterControlDescriptor` | 页面插槽、控件锚点、类型、默认值属性和资源 ID。 |
+| `ExtPluginControlAccess` | 不依赖 LakeUI 的公共控件属性读写辅助器。 |
 | `ExtPluginLogLevel` | `Trace`、`Information`、`Warning`、`Error`。 |
 | `IExtPluginUiRegistry` | `AvailableAnchors`、`AvailableChoiceAnchors`、`Register`、`RegisterChoice`。 |
 | `ExtPluginUiExtension` | 普通/替换 UI 扩展、锚点、顺序、控件工厂和资源声明。 |
@@ -1030,6 +1235,11 @@ VB.NET 项目把扩展名改为 `.vbproj`。
 | `IExtPluginResourceRegistry` | 共享资源声明和冲突检查。 |
 | `ExtPluginResourceClaim` | 资源 ID、访问模式和用途说明。 |
 | `IExtPluginPipelineRegistry` | `AvailableStages`、`Register`。 |
+| `IExtPluginCommandRegistry` | 注册声明式 FFmpeg 参数提供器和外部命令步骤提供器。 |
+| `ExtPluginCommandContext` | 预设、插件状态、路径、阶段、预览标记以及参数/步骤输出集合。 |
+| `ExtPluginCommandArgument` / `ExtPluginCommandArgumentPosition` | FFmpeg 参数片段及五个稳定插入位置。 |
+| `ExtPluginCommandStep` / `ExtPluginCommandStepPlacement` | 队列托管的前置/后置外部进程步骤。 |
+| `ExtFFmpegFreeUICommandPlaceholders` | “完全自己写”模板中的五个可选声明式参数插槽。 |
 | `ExtPluginPipelineHandler` | 处理器 ID、阶段、顺序和回调。 |
 | `ExtPluginPipelineCallback` | 返回 `ValueTask` 的处理器委托。 |
 | `ExtPluginPipelineContext` | 预设、路径、命令、进程、任务、属性、进度和结果。 |
@@ -1037,7 +1247,8 @@ VB.NET 项目把扩展名改为 `.vbproj`。
 | `ExtPluginTaskResult` | 宿主内部传递结构化结果的记录类型。 |
 | `ExtPluginTaskStatus` | `Unknown`、`Pending`、`Running`、`Paused`、`Succeeded`、`Failed`、`Canceled`。 |
 | `ExtFFmpegFreeUIPluginApi` | 当前 SDK 声明版本 `Version`。 |
-| `ExtFFmpegFreeUIUiAnchors` | 6 个稳定 UI 锚点和 `All` 集合。 |
+| `ExtFFmpegFreeUIUiAnchors` | 6 个 v2.2 兼容 UI 锚点和 `All` 集合。 |
+| `ExtFFmpegFreeUIParameterPanelIds` | v2.3 页面、控件锚点和动态资源 ID 规则。 |
 | `ExtFFmpegFreeUIUiChoiceAnchors` / `ExtFFmpegFreeUIUiChoices` | 可安全扩展的下拉框和原生选项稳定 ID。 |
 | `ExtFFmpegFreeUIBehaviors` | 可组合或独占替换的原生行为点。 |
 | `ExtFFmpegFreeUIPluginResources` | 可进行冲突协调的共享资源。 |

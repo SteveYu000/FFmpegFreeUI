@@ -8,10 +8,10 @@
     <OptionStrict>On</OptionStrict>
     <RootNamespace>FFmpegFreeUI</RootNamespace>
     <AssemblyName>FFmpegFreeUI.Ext.PluginHost</AssemblyName>
-    <Version>2.2.0</Version>
-    <AssemblyVersion>2.2.0.0</AssemblyVersion>
-    <FileVersion>2.2.0.0</FileVersion>
-    <InformationalVersion>v2.2</InformationalVersion>
+    <Version>2.3.0</Version>
+    <AssemblyVersion>2.3.0.0</AssemblyVersion>
+    <FileVersion>2.3.0.0</FileVersion>
+    <InformationalVersion>v2.3</InformationalVersion>
     <Product>FFmpegFreeUI API Extended Edition Ext Plugin Host</Product>
   </PropertyGroup>
 

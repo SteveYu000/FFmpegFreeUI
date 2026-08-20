@@ -1656,13 +1656,19 @@ Public Class AgentLocalTools
             {"status_code", CInt(stepItem.状态)},
             {"description", stepItem.说明},
             {"requires_media_duration", stepItem.需要媒体总时长},
+            {"is_plugin_step", stepItem.是插件步骤},
             {"output_cache_count", If(stepItem.输出缓存 Is Nothing, 0, stepItem.输出缓存.Count)}
         }
+        If stepItem.是插件步骤 Then
+            item("plugin_id") = stepItem.插件ID
+            item("plugin_provider_id") = stepItem.插件提供器ID
+            item("plugin_step_id") = stepItem.插件步骤ID
+        End If
         If stepItem.输出缓存 IsNot Nothing AndAlso stepItem.输出缓存.Count > 0 Then item("latest_output") = stepItem.输出缓存(stepItem.输出缓存.Count - 1)
         If includeCommand Then
-            item("process") = 预设管理_v6.获取命令行进程名(stepItem.阶段)
+            item("process") = 预设管理_v6.获取命令行进程名(stepItem.阶段, stepItem.进程文件名)
             item("arguments") = stepItem.命令行
-            item("command_line") = 预设管理_v6.获取命令行进程名(stepItem.阶段) & " " & stepItem.命令行
+            item("command_line") = 预设管理_v6.获取命令行进程名(stepItem.阶段, stepItem.进程文件名) & " " & stepItem.命令行
             If Not String.IsNullOrWhiteSpace(stepItem.实际执行文件名) Then
                 item("actual_process") = stepItem.实际执行文件名
                 item("actual_arguments") = stepItem.实际执行参数
@@ -1710,14 +1716,26 @@ Public Class AgentLocalTools
             If task.步骤 IsNot Nothing AndAlso task.步骤.Count > 0 Then
                 For i = 0 To task.步骤.Count - 1
                     Dim stepItem = task.步骤(i)
-                    result.Add(BuildQueueCommandItem(i + 1, stepItem.阶段, stepItem.显示名称, stepItem.命令行, stepItem.实际执行文件名, stepItem.实际执行参数))
+                    result.Add(BuildQueueCommandItem(
+                        i + 1,
+                        stepItem.阶段,
+                        stepItem.显示名称,
+                        stepItem.命令行,
+                        plannedProcess:=stepItem.进程文件名,
+                        actualProcess:=stepItem.实际执行文件名,
+                        actualArguments:=stepItem.实际执行参数))
                 Next
             ElseIf task.预设数据 IsNot Nothing Then
                 Dim output = If(task.输出文件 <> "", task.输出文件, 编码队列_v6.计算输出位置_v6(task.输入文件, task.预设数据))
                 Dim generated = 预设管理_v6.生成阶段化命令行(task.预设数据, task.输入文件, output, 帧服务器脚本后缀:=task.ID)
                 For i = 0 To generated.Count - 1
                     Dim command = generated(i)
-                    result.Add(BuildQueueCommandItem(i + 1, command.阶段, command.阶段.ToString(), command.命令行))
+                    result.Add(BuildQueueCommandItem(
+                        i + 1,
+                        command.阶段,
+                        If(String.IsNullOrWhiteSpace(command.显示名称), command.阶段.ToString(), command.显示名称),
+                        command.命令行,
+                        plannedProcess:=command.进程文件名))
                 Next
             ElseIf task.命令行 <> "" Then
                 result.Add(BuildQueueCommandItem(1, 预设数据_v6.命令行阶段.普通单次, "命令行", task.命令行))
@@ -1730,11 +1748,12 @@ Public Class AgentLocalTools
 
     Private Shared Function BuildQueueCommandItem(index As Integer,
                                                   stage As 预设数据_v6.命令行阶段,
-                                                  displayName As String,
-                                                  arguments As String,
-                                                  Optional actualProcess As String = "",
-                                                  Optional actualArguments As String = "") As Dictionary(Of String, Object)
-        Dim processName = 预设管理_v6.获取命令行进程名(stage)
+                                                   displayName As String,
+                                                   arguments As String,
+                                                   Optional actualProcess As String = "",
+                                                   Optional actualArguments As String = "",
+                                                   Optional plannedProcess As String = "") As Dictionary(Of String, Object)
+        Dim processName = 预设管理_v6.获取命令行进程名(stage, plannedProcess)
         Dim item As New Dictionary(Of String, Object) From {
             {"index", index},
             {"stage", stage.ToString()},

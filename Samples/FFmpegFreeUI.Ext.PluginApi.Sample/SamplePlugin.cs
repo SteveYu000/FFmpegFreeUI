@@ -8,8 +8,8 @@ using FFmpegFreeUI.Ext.PluginSdk;
 namespace FFmpegFreeUI.Ext.PluginApi.Sample;
 
 /// <summary>
-/// C# 综合示例：以“自动质量策略、命令审计、输出校验”为应用场景，展示 Ext Plugin API v2.2
-/// 的全部 UI 锚点和处理阶段。所有会改变任务的选项默认关闭，便于直接安装调试。
+/// C# 综合示例：以“自动质量策略、命令审计、输出校验”为应用场景，展示 Ext Plugin API v2.3
+/// 的参数面板目录、声明式命令计划、兼容 UI 锚点和处理阶段。所有会改变任务的选项默认关闭。
 /// </summary>
 public sealed partial class SamplePlugin : IExtFFmpegFreeUIPlugin
 {
@@ -35,6 +35,10 @@ public sealed partial class SamplePlugin : IExtFFmpegFreeUIPlugin
         }
 
         _host = host;
+        if (host is not IExtFFmpegFreeUIHostV23 extendedHost)
+        {
+            throw new NotSupportedException("宿主声明支持 API 2.3，但没有提供 IExtFFmpegFreeUIHostV23");
+        }
         host.Log(
             ExtPluginLogLevel.Information,
             $"正在初始化 {DisplayName}；API={host.ApiVersion}，FFmpegFreeUI={host.HostVersion}");
@@ -42,6 +46,7 @@ public sealed partial class SamplePlugin : IExtFFmpegFreeUIPlugin
         RegisterUiExtensions(host);
         RegisterSafeChoiceAndBehavior(host);
         RegisterPipelineHandlers(host);
+        RegisterV23Extensions(extendedHost);
 
         // AvailableAnchors / AvailableStages 可用于兼容较旧宿主；不要反射查找宿主私有控件或方法。
         var missingAnchors = ExtFFmpegFreeUIUiAnchors.All.Except(
@@ -265,6 +270,8 @@ public sealed partial class SamplePlugin : IExtFFmpegFreeUIPlugin
         public string ProcessOverride { get; set; } = string.Empty;
         public bool AcceptExitCodeOne { get; set; }
         public bool ComputeSha256 { get; set; }
+        public bool AddDeclarativeMetadata { get; set; }
+        public bool RunDeclarativeCommandStep { get; set; }
         public string LastSurfaceId { get; set; } = string.Empty;
     }
 
@@ -324,5 +331,7 @@ public sealed partial class SamplePlugin : IExtFFmpegFreeUIPlugin
          state.AddNoStdin ||
          !string.IsNullOrWhiteSpace(state.ProcessOverride) ||
          state.AcceptExitCodeOne ||
-         state.ComputeSha256);
+         state.ComputeSha256 ||
+         state.AddDeclarativeMetadata ||
+         state.RunDeclarativeCommandStep);
 }

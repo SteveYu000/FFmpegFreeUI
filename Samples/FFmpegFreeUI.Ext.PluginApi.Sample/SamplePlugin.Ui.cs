@@ -195,6 +195,63 @@ public sealed partial class SamplePlugin
         return panel;
     }
 
+    /// <summary>通过 v2.3 页面顶部锚点向“音频参数”页增加控件。</summary>
+    private static Control CreateV23AudioCommandRow(IExtPluginUiContext context)
+    {
+        var row = CreateRow(48);
+        var metadata = new CheckBox
+        {
+            AutoSize = true,
+            ForeColor = TextColor,
+            Text = "声明式追加示例 metadata"
+        };
+        var commandStep = new CheckBox
+        {
+            AutoSize = true,
+            ForeColor = TextColor,
+            Text = "执行可预览的示例前置命令"
+        };
+        row.Controls.Add(metadata);
+        row.Controls.Add(commandStep);
+
+        var restoring = false;
+        void Restore()
+        {
+            restoring = true;
+            try
+            {
+                var state = DeserializeState(context.StateJson);
+                metadata.Checked = state.AddDeclarativeMetadata;
+                commandStep.Checked = state.RunDeclarativeCommandStep;
+            }
+            finally
+            {
+                restoring = false;
+            }
+        }
+
+        void Save()
+        {
+            if (restoring)
+            {
+                return;
+            }
+            var state = DeserializeState(context.StateJson);
+            state.AddDeclarativeMetadata = metadata.Checked;
+            state.RunDeclarativeCommandStep = commandStep.Checked;
+            context.StateJson = JsonSerializer.Serialize(state);
+            context.RequestParameterRefresh();
+        }
+
+        metadata.CheckedChanged += (_, _) => Save();
+        commandStep.CheckedChanged += (_, _) => Save();
+        EventHandler restored = (_, _) => Restore();
+        context.StateRestored += restored;
+        row.Disposed += (_, _) => context.StateRestored -= restored;
+        Restore();
+        return row;
+    }
+
     /// <summary>第三个插入型锚点：控制成功后 SHA-256 校验，并提供显式刷新按钮。</summary>
     private static Control CreatePostProcessRow(IExtPluginUiContext context)
     {

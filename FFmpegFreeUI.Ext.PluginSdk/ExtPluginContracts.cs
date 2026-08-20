@@ -1,4 +1,7 @@
+using System.ComponentModel;
 using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Reflection;
 using System.Windows.Forms;
 
 namespace FFmpegFreeUI.Ext.PluginSdk;
@@ -21,6 +24,257 @@ public interface IExtFFmpegFreeUIHost
     IExtPluginBehaviorRegistry Behaviors { get; }
     IExtPluginResourceRegistry Resources { get; }
     void Log(ExtPluginLogLevel level, string message, Exception? exception = null);
+}
+
+/// <summary>
+/// Ext Plugin API v2.3 的追加宿主能力。为保持已编译 v2.2 插件的二进制兼容性，
+/// 新能力通过派生接口发现，不向原有 IExtFFmpegFreeUIHost 强行增加成员。
+/// </summary>
+public interface IExtFFmpegFreeUIHostV23 : IExtFFmpegFreeUIHost
+{
+    IExtPluginParameterPanelCatalog ParameterPanel { get; }
+    IExtPluginCommandRegistry Commands { get; }
+}
+
+/// <summary>参数面板当前公开的页面、原生控件及其稳定锚点目录。</summary>
+public interface IExtPluginParameterPanelCatalog
+{
+    IReadOnlyCollection<ExtPluginParameterPageDescriptor> AvailablePages { get; }
+    IReadOnlyCollection<ExtPluginParameterControlDescriptor> AvailableControls { get; }
+}
+
+public sealed class ExtPluginParameterPageDescriptor
+{
+    public ExtPluginParameterPageDescriptor(
+        string pageId,
+        string displayName,
+        string topAnchorId,
+        string bottomAnchorId)
+    {
+        PageId = pageId;
+        DisplayName = displayName;
+        TopAnchorId = topAnchorId;
+        BottomAnchorId = bottomAnchorId;
+    }
+
+    public string PageId { get; }
+    public string DisplayName { get; }
+    public string TopAnchorId { get; }
+    public string BottomAnchorId { get; }
+}
+
+public sealed class ExtPluginParameterControlDescriptor
+{
+    public ExtPluginParameterControlDescriptor(
+        string controlId,
+        string pageId,
+        string controlPath,
+        string controlName,
+        string controlTypeName,
+        string anchorId,
+        string resourceId,
+        string valuePropertyName)
+    {
+        ControlId = controlId;
+        PageId = pageId;
+        ControlPath = controlPath;
+        ControlName = controlName;
+        ControlTypeName = controlTypeName;
+        AnchorId = anchorId;
+        ResourceId = resourceId;
+        ValuePropertyName = valuePropertyName;
+    }
+
+    public string ControlId { get; }
+    public string PageId { get; }
+    public string ControlPath { get; }
+    public string ControlName { get; }
+    public string ControlTypeName { get; }
+    public string AnchorId { get; }
+    public string ResourceId { get; }
+    public string ValuePropertyName { get; }
+}
+
+/// <summary>参数页面和动态控件锚点的稳定 ID 规则。</summary>
+public static class ExtFFmpegFreeUIParameterPanelIds
+{
+    public const string PageAnchorPrefix = "ext.parameters.page.";
+    public const string ControlAnchorPrefix = "ext.parameters.control.";
+    public const string ControlResourcePrefix = "ext.parameters.control-resource.";
+
+    public static string PageTop(string pageId) =>
+        PageAnchorPrefix + NormalizePageId(pageId) + ".top";
+
+    public static string PageBottom(string pageId) =>
+        PageAnchorPrefix + NormalizePageId(pageId) + ".bottom";
+
+    public static string Control(string pageId, string escapedControlPath) =>
+        ControlAnchorPrefix + NormalizePageId(pageId) + "." + RequireValue(escapedControlPath, nameof(escapedControlPath));
+
+    public static string ControlResource(string controlIdOrAnchorId)
+    {
+        var value = RequireValue(controlIdOrAnchorId, nameof(controlIdOrAnchorId));
+        if (value.StartsWith(ControlAnchorPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            value = value[ControlAnchorPrefix.Length..];
+        }
+        return ControlResourcePrefix + value;
+    }
+
+    private static string NormalizePageId(string pageId) =>
+        RequireValue(pageId, nameof(pageId)).ToLowerInvariant();
+
+    private static string RequireValue(string? value, string parameterName)
+    {
+        var result = (value ?? string.Empty).Trim();
+        return result.Length == 0
+            ? throw new ArgumentException("ID 不能为空", parameterName)
+            : result;
+    }
+}
+
+/// <summary>
+/// 不引用 LakeUI 也能读写原生控件公共属性的兼容辅助器。调用方必须位于控件所属 UI 线程；
+/// 宿主不承诺具体控件类型，只承诺目录中的控件 ID 和公开属性访问约定。
+/// </summary>
+public static class ExtPluginControlAccess
+{
+    public static string GetDefaultValuePropertyName(Control control)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        var type = control.GetType();
+        if (FindProperty(type, "Checked", requireWrite: false)?.PropertyType == typeof(bool))
+        {
+            return "Checked";
+        }
+        if (type.Name.Contains("TrackBar", StringComparison.OrdinalIgnoreCase) &&
+            FindProperty(type, "Value", requireWrite: false) is not null)
+        {
+            return "Value";
+        }
+        if (FindProperty(type, "Text", requireWrite: false) is not null)
+        {
+            return "Text";
+        }
+        if (FindProperty(type, "Value", requireWrite: false) is not null)
+        {
+            return "Value";
+        }
+        if (FindProperty(type, "SelectedIndex", requireWrite: false) is not null)
+        {
+            return "SelectedIndex";
+        }
+        return string.Empty;
+    }
+
+    public static bool TryGetValue(Control control, out object? value)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        var propertyName = GetDefaultValuePropertyName(control);
+        return TryGetProperty(control, propertyName, out value);
+    }
+
+    public static bool TrySetValue(Control control, object? value)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        var propertyName = GetDefaultValuePropertyName(control);
+        return TrySetProperty(control, propertyName, value);
+    }
+
+    public static bool TryGetProperty(Control control, string propertyName, out object? value)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        value = null;
+        if (string.IsNullOrWhiteSpace(propertyName))
+        {
+            return false;
+        }
+
+        var property = FindProperty(control.GetType(), propertyName, requireWrite: false);
+        if (property is null || !property.CanRead)
+        {
+            return false;
+        }
+
+        try
+        {
+            value = property.GetValue(control);
+            return true;
+        }
+        catch
+        {
+            value = null;
+            return false;
+        }
+    }
+
+    public static bool TrySetProperty(Control control, string propertyName, object? value)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        if (string.IsNullOrWhiteSpace(propertyName))
+        {
+            return false;
+        }
+
+        var property = FindProperty(control.GetType(), propertyName, requireWrite: true);
+        if (property is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            property.SetValue(control, ConvertValue(value, property.PropertyType));
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static PropertyInfo? FindProperty(Type type, string propertyName, bool requireWrite)
+    {
+        var property = type.GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+        if (property is null || property.GetIndexParameters().Length != 0 || !property.CanRead)
+        {
+            return null;
+        }
+        return requireWrite && !property.CanWrite ? null : property;
+    }
+
+    private static object? ConvertValue(object? value, Type destinationType)
+    {
+        var nullableType = Nullable.GetUnderlyingType(destinationType);
+        var targetType = nullableType ?? destinationType;
+        if (value is null)
+        {
+            if (destinationType.IsValueType && nullableType is null)
+            {
+                throw new InvalidCastException($"{destinationType.FullName} 不接受 null");
+            }
+            return null;
+        }
+        if (targetType.IsInstanceOfType(value))
+        {
+            return value;
+        }
+        if (value is string text)
+        {
+            if (targetType.IsEnum)
+            {
+                return Enum.Parse(targetType, text, ignoreCase: true);
+            }
+            var converter = TypeDescriptor.GetConverter(targetType);
+            if (converter.CanConvertFrom(typeof(string)))
+            {
+                return converter.ConvertFrom(null, CultureInfo.InvariantCulture, text);
+            }
+        }
+        return Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
+    }
 }
 
 public enum ExtPluginLogLevel
@@ -57,6 +311,12 @@ public sealed class ExtPluginUiExtension
     public string AnchorId { get; set; }
     public int Order { get; set; }
     public Func<IExtPluginUiContext, Control?> CreateControl { get; set; }
+
+    /// <summary>
+    /// 扩展注销或所属界面销毁时调用。装饰原生控件时应在这里移除事件处理器并恢复主动修改的属性；
+    /// v2.2 插件未设置此成员时保持原有行为。
+    /// </summary>
+    public Action<IExtPluginUiContext>? Cleanup { get; set; }
 
     /// <summary>
     /// 默认值只插入或装饰；ReplaceAnchor 会隐藏原生控件并在同一布局位置放入插件控件。
@@ -171,6 +431,135 @@ public interface IExtPluginPipelineRegistry
 {
     IReadOnlyCollection<string> AvailableStages { get; }
     IDisposable Register(ExtPluginPipelineHandler handler);
+}
+
+/// <summary>
+/// 声明式命令注册表。参数提供器向原生 FFmpeg 命令的稳定位置贡献参数；
+/// 步骤提供器向同一命令计划贡献可预览、可取消并由队列统一执行的外部进程步骤。
+/// </summary>
+public interface IExtPluginCommandRegistry
+{
+    IDisposable RegisterParameterProvider(ExtPluginCommandParameterProvider provider);
+    IDisposable RegisterStepProvider(ExtPluginCommandStepProvider provider);
+}
+
+public delegate void ExtPluginCommandParameterCallback(ExtPluginCommandContext context);
+public delegate void ExtPluginCommandStepCallback(ExtPluginCommandContext context);
+
+public sealed class ExtPluginCommandParameterProvider
+{
+    public ExtPluginCommandParameterProvider(string id, ExtPluginCommandParameterCallback callback)
+    {
+        Id = id;
+        Callback = callback;
+    }
+
+    public string Id { get; set; }
+    public int Order { get; set; }
+    public ExtPluginCommandParameterCallback Callback { get; set; }
+}
+
+public sealed class ExtPluginCommandStepProvider
+{
+    public ExtPluginCommandStepProvider(string id, ExtPluginCommandStepCallback callback)
+    {
+        Id = id;
+        Callback = callback;
+    }
+
+    public string Id { get; set; }
+    public int Order { get; set; }
+    public ExtPluginCommandStepCallback Callback { get; set; }
+}
+
+/// <summary>命令提供器每次解析时得到的只读输入和输出集合。</summary>
+public sealed class ExtPluginCommandContext
+{
+    public string PluginId { get; set; } = string.Empty;
+    public string PresetJson { get; set; } = string.Empty;
+    public string PluginStateJson { get; set; } = "{}";
+    public string InputPath { get; set; } = string.Empty;
+    public string OutputPath { get; set; } = string.Empty;
+    public string TaskId { get; set; } = string.Empty;
+    public string PhaseName { get; set; } = string.Empty;
+    public bool IsPreview { get; set; }
+    public IDictionary<string, string?> Properties { get; } =
+        new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+    public IList<ExtPluginCommandArgument> Arguments { get; } = new List<ExtPluginCommandArgument>();
+    public IList<ExtPluginCommandStep> Steps { get; } = new List<ExtPluginCommandStep>();
+}
+
+/// <summary>插件参数相对于 FFmpeg 原生命令结构的插入位置。</summary>
+public enum ExtPluginCommandArgumentPosition
+{
+    /// <summary>位于 -hide_banner 之前；只适合 FFmpeg 全局选项。</summary>
+    Global,
+    /// <summary>位于原生输入选项之后、主输入 -i 之前。</summary>
+    BeforeInput,
+    /// <summary>位于全部输入之后、原生输出选项之前。</summary>
+    AfterInput,
+    /// <summary>位于原生输出选项之后、输出目标之前。</summary>
+    BeforeOutput,
+    /// <summary>位于输出目标之后。</summary>
+    AfterOutput
+}
+
+/// <summary>
+/// “完全自己写”命令模板中的可选插槽。结构化命令不需要这些标记；模板未写标记时，
+/// 宿主会为兼容旧预设按可推断位置插入，但新模板应显式保留需要的位置。
+/// </summary>
+public static class ExtFFmpegFreeUICommandPlaceholders
+{
+    public const string Global = "<ext:global>";
+    public const string BeforeInput = "<ext:before-input>";
+    public const string AfterInput = "<ext:after-input>";
+    public const string BeforeOutput = "<ext:before-output>";
+    public const string AfterOutput = "<ext:after-output>";
+}
+
+public sealed class ExtPluginCommandArgument
+{
+    public ExtPluginCommandArgument(ExtPluginCommandArgumentPosition position, string text)
+    {
+        Position = position;
+        Text = text;
+    }
+
+    public ExtPluginCommandArgumentPosition Position { get; set; }
+    public string Text { get; set; }
+    public int Order { get; set; }
+    public string Description { get; set; } = string.Empty;
+}
+
+public enum ExtPluginCommandStepPlacement
+{
+    BeforeNative,
+    AfterNative
+}
+
+/// <summary>
+/// 插件贡献的独立进程步骤。宿主使用 UseShellExecute=false 启动，不经过 FFmpeg 的全局参数包装；
+/// 标准输出、标准错误、非零退出码、暂停/停止和取消均由编码队列统一管理。
+/// </summary>
+public sealed class ExtPluginCommandStep
+{
+    public ExtPluginCommandStep(string id, string displayName, string processFileName, string arguments)
+    {
+        Id = id;
+        DisplayName = displayName;
+        ProcessFileName = processFileName;
+        Arguments = arguments;
+    }
+
+    public string Id { get; set; }
+    public string DisplayName { get; set; }
+    public string ProcessFileName { get; set; }
+    public string Arguments { get; set; }
+    public string WorkingDirectory { get; set; } = string.Empty;
+    public ExtPluginCommandStepPlacement Placement { get; set; }
+    public int Order { get; set; }
+    public bool IncludeInPreview { get; set; } = true;
+    public bool ParseFFmpegProgress { get; set; }
 }
 
 /// <summary>注册原生稳定行为点前后或替换处理器。</summary>
@@ -369,7 +758,7 @@ public enum ExtPluginTaskStatus
 /// <summary>稳定的 API 与发现机制常量。</summary>
 public static class ExtFFmpegFreeUIPluginApi
 {
-    public static Version Version { get; } = new(2, 2, 0);
+    public static Version Version { get; } = new(2, 3, 0);
 }
 
 /// <summary>宿主当前提供的 UI 锚点 ID。</summary>
@@ -437,6 +826,8 @@ public static class ExtFFmpegFreeUIPluginResources
     public const string ParametersVideoQualityFields = "ext.parameters.video.quality.fields";
     public const string PresetDocument = "ext.preset.document";
     public const string CommandLine = "ext.command.line";
+    public const string CommandArguments = "ext.command.arguments";
+    public const string CommandPlan = "ext.command.plan";
     public const string TaskAfterProcessing = "ext.task.after-processing";
 
     public static IReadOnlyCollection<string> All { get; } = new ReadOnlyCollection<string>(
@@ -448,6 +839,8 @@ public static class ExtFFmpegFreeUIPluginResources
             ParametersVideoQualityFields,
             PresetDocument,
             CommandLine,
+            CommandArguments,
+            CommandPlan,
             TaskAfterProcessing
         });
 }
@@ -481,7 +874,7 @@ public static class ExtFFmpegFreeUIPipelineStages
     public const string CommandAfterBuild = "ext.command.after-build";
     public const string ProcessBeforeStart = "ext.process.before-start";
     public const string ProcessAfterExit = "ext.process.after-exit";
-    /// <summary>全部原生步骤成功后、任务标记完成前执行一次；适合可取消的成功后处理。</summary>
+    /// <summary>全部原生及声明式插件步骤成功后、任务标记完成前执行一次；适合可取消的成功后处理。</summary>
     public const string TaskAfterComplete = "ext.task.after-complete";
     /// <summary>任务确定失败后执行一次；用户取消不触发。</summary>
     public const string TaskAfterFailed = "ext.task.after-failed";

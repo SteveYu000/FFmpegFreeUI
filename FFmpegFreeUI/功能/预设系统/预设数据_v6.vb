@@ -326,12 +326,21 @@ Public Class 预设数据_v6
 
     Class 命令行生成结果
         Public Property 阶段 As 命令行阶段 = 命令行阶段.普通单次
+        Public Property 进程文件名 As String = ""
+        Public Property 工作目录 As String = ""
         Public Property 命令行 As String = ""
         Public Property 滤镜图 As String = ""
         Public Property 映射参数 As String = ""
         Public Property 输出滤镜参数 As String = ""
         Public Property 需要媒体总时长 As Boolean = False
+        Public Property 显示名称 As String = ""
         Public Property 说明 As String = ""
+        Public Property 是插件步骤 As Boolean = False
+        Public Property 插件ID As String = ""
+        Public Property 插件提供器ID As String = ""
+        Public Property 插件步骤ID As String = ""
+        Public Property 使用宿主FFmpeg参数包装 As Boolean = True
+        Public Property 解析FFmpeg进度 As Boolean = True
     End Class
 
     Class 滤镜排序单片结构

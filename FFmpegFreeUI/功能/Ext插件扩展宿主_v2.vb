@@ -13,14 +13,18 @@ Imports LakeUI
 ''' </summary>
 Friend Module Ext插件扩展宿主_v2
 
-    Private ReadOnly 支持API版本 As New Version(2, 2, 0)
+    Private ReadOnly 支持API版本 As New Version(2, 3, 0)
     Private ReadOnly 同步锁 As New Object
     Private ReadOnly 界面扩展列表 As New List(Of 已注册界面扩展)
     Private ReadOnly 安全下拉项列表 As New List(Of 已注册安全下拉项)
     Private ReadOnly 处理器列表 As New List(Of 已注册处理器)
     Private ReadOnly 行为处理器列表 As New List(Of 已注册行为处理器)
     Private ReadOnly 资源声明列表 As New List(Of 已注册资源声明)
+    Private ReadOnly 命令参数提供器列表 As New List(Of 已注册命令参数提供器)
+    Private ReadOnly 命令步骤提供器列表 As New List(Of 已注册命令步骤提供器)
     Private ReadOnly 界面锚点列表 As New List(Of 已注册界面锚点)
+    Private ReadOnly 参数页面目录 As New Dictionary(Of String, ExtPluginParameterPageDescriptor)(StringComparer.OrdinalIgnoreCase)
+    Private ReadOnly 参数控件目录 As New Dictionary(Of String, ExtPluginParameterControlDescriptor)(StringComparer.OrdinalIgnoreCase)
     Private ReadOnly 参数面板状态表 As New ConditionalWeakTable(Of Form_v6_参数面板, 参数面板插件状态)
     Private ReadOnly 插件实例表 As New Dictionary(Of String, IExtFFmpegFreeUIPlugin)(StringComparer.OrdinalIgnoreCase)
     Private ReadOnly 插件宿主表 As New Dictionary(Of String, IExtFFmpegFreeUIHost)(StringComparer.OrdinalIgnoreCase)
@@ -96,6 +100,26 @@ Friend Module Ext插件扩展宿主_v2
                 .Position = position
             }
             界面锚点列表.Add(anchor)
+            Dim legacyResourceId = 尝试获取传统锚点资源ID(anchor.AnchorId)
+            If legacyResourceId <> "" Then
+                For Each aliasAnchor In 界面锚点列表.Where(
+                    Function(item) item.AnchorControl Is anchorControl AndAlso
+                                   item.AnchorId.StartsWith(ExtFFmpegFreeUIParameterPanelIds.ControlAnchorPrefix, StringComparison.OrdinalIgnoreCase))
+                    Dim descriptor As ExtPluginParameterControlDescriptor = Nothing
+                    If 参数控件目录.TryGetValue(aliasAnchor.AnchorId, descriptor) AndAlso
+                       Not String.Equals(descriptor.ResourceId, legacyResourceId, StringComparison.OrdinalIgnoreCase) Then
+                        参数控件目录(aliasAnchor.AnchorId) = New ExtPluginParameterControlDescriptor(
+                            descriptor.ControlId,
+                            descriptor.PageId,
+                            descriptor.ControlPath,
+                            descriptor.ControlName,
+                            descriptor.ControlTypeName,
+                            descriptor.AnchorId,
+                            legacyResourceId,
+                            descriptor.ValuePropertyName)
+                    End If
+                Next
+            End If
             extensions = 界面扩展列表.
                 Where(Function(x) String.Equals(x.Extension.AnchorId, anchor.AnchorId, StringComparison.OrdinalIgnoreCase)).
                 OrderBy(Function(x) x.Extension.Order).
@@ -117,6 +141,61 @@ Friend Module Ext插件扩展宿主_v2
         For Each choice In choices
             应用安全下拉项(anchor, choice)
         Next
+    End Sub
+
+    Friend Sub 注册参数面板页面(pageId As String,
+                            displayName As String,
+                            pageRoot As Control,
+                            surface As Form_v6_参数面板)
+        Dim id = If(pageId, "").Trim().ToLowerInvariant()
+        If id = "" OrElse pageRoot Is Nothing OrElse surface Is Nothing Then Exit Sub
+        Dim topAnchorId = ExtFFmpegFreeUIParameterPanelIds.PageTop(id)
+        Dim bottomAnchorId = ExtFFmpegFreeUIParameterPanelIds.PageBottom(id)
+        SyncLock 同步锁
+            If Not 参数页面目录.ContainsKey(id) Then
+                参数页面目录(id) = New ExtPluginParameterPageDescriptor(
+                    id,
+                    If(displayName, "").Trim(),
+                    topAnchorId,
+                    bottomAnchorId)
+            End If
+        End SyncLock
+        注册界面锚点(topAnchorId, pageRoot, surface, Ext插件界面锚点位置_v2.容器顶部)
+        注册界面锚点(bottomAnchorId, pageRoot, surface, Ext插件界面锚点位置_v2.容器底部)
+    End Sub
+
+    Friend Sub 注册参数面板控件(controlId As String,
+                            pageId As String,
+                            controlPath As String,
+                            controlName As String,
+                            controlTypeName As String,
+                            valuePropertyName As String,
+                            control As Control,
+                            surface As Form_v6_参数面板)
+        Dim id = If(controlId, "").Trim()
+        If id = "" OrElse control Is Nothing OrElse surface Is Nothing Then Exit Sub
+        Dim resourceId = ExtFFmpegFreeUIParameterPanelIds.ControlResource(id)
+        Dim knownLegacyResourceId = 尝试获取参数控件传统资源ID(pageId, controlName)
+        If knownLegacyResourceId <> "" Then resourceId = knownLegacyResourceId
+        SyncLock 同步锁
+            Dim legacyResourceId = 界面锚点列表.
+                Where(Function(item) item.AnchorControl Is control).
+                Select(Function(item) 尝试获取传统锚点资源ID(item.AnchorId)).
+                FirstOrDefault(Function(item) item <> "")
+            If legacyResourceId <> "" Then resourceId = legacyResourceId
+            If Not 参数控件目录.ContainsKey(id) Then
+                参数控件目录(id) = New ExtPluginParameterControlDescriptor(
+                    id,
+                    If(pageId, "").Trim().ToLowerInvariant(),
+                    If(controlPath, "").Trim(),
+                    If(controlName, "").Trim(),
+                    If(controlTypeName, "").Trim(),
+                    id,
+                    resourceId,
+                    If(valuePropertyName, "").Trim())
+            End If
+        End SyncLock
+        注册界面锚点(id, control, surface, Ext插件界面锚点位置_v2.装饰目标控件)
     End Sub
 
     Friend Sub 还原参数面板插件状态(surface As Form_v6_参数面板, values As IDictionary(Of String, String))
@@ -197,6 +276,133 @@ Friend Module Ext插件扩展宿主_v2
             End Try
             应用SDK上下文(sdkContext, context)
         Next
+    End Function
+
+    Friend Function 解析插件命令参数(source As Ext插件命令解析上下文_v2) As List(Of Ext插件命令参数_v2)
+        If source Is Nothing Then Throw New ArgumentNullException(NameOf(source))
+        Dim result As New List(Of Ext插件命令参数_v2)
+        For Each registration In 获取命令参数提供器()
+            Dim context = 创建插件命令上下文(source, registration.PluginId)
+            Try
+                registration.Provider.Callback.Invoke(context)
+            Catch ex As Exception
+                Throw New InvalidOperationException(
+                    $"插件 {registration.PluginId} 的参数提供器 {registration.Provider.Id} 解析失败：{ex.Message}",
+                    ex)
+            End Try
+
+            For Each argument In context.Arguments.
+                Where(Function(item) item IsNot Nothing AndAlso Not String.IsNullOrWhiteSpace(item.Text)).
+                OrderBy(Function(item) item.Order)
+                result.Add(New Ext插件命令参数_v2 With {
+                    .PluginId = registration.PluginId,
+                    .ProviderId = registration.Provider.Id,
+                    .Position = 转换命令参数位置(argument.Position),
+                    .Text = argument.Text.Trim(),
+                    .Order = argument.Order,
+                    .Description = If(argument.Description, "").Trim()
+                })
+            Next
+        Next
+        Return result
+    End Function
+
+    Friend Function 解析插件命令步骤(source As Ext插件命令解析上下文_v2) As List(Of Ext插件命令步骤_v2)
+        If source Is Nothing Then Throw New ArgumentNullException(NameOf(source))
+        Dim result As New List(Of Ext插件命令步骤_v2)
+        For Each registration In 获取命令步骤提供器()
+            Dim context = 创建插件命令上下文(source, registration.PluginId)
+            Try
+                registration.Provider.Callback.Invoke(context)
+            Catch ex As Exception
+                Throw New InvalidOperationException(
+                    $"插件 {registration.PluginId} 的命令步骤提供器 {registration.Provider.Id} 解析失败：{ex.Message}",
+                    ex)
+            End Try
+
+            Dim duplicateIds = context.Steps.
+                Where(Function(item) item IsNot Nothing).
+                GroupBy(Function(item) If(item.Id, "").Trim(), StringComparer.OrdinalIgnoreCase).
+                FirstOrDefault(Function(group) group.Key = "" OrElse group.Count() > 1)
+            If duplicateIds IsNot Nothing Then
+                Throw New InvalidOperationException(
+                    $"插件 {registration.PluginId} 的命令步骤提供器 {registration.Provider.Id} 包含空或重复的步骤 ID")
+            End If
+
+            For Each stepItem In context.Steps.
+                Where(Function(item) item IsNot Nothing AndAlso (Not source.IsPreview OrElse item.IncludeInPreview)).
+                OrderBy(Function(item) item.Order)
+                If String.IsNullOrWhiteSpace(stepItem.ProcessFileName) Then
+                    Throw New InvalidOperationException(
+                        $"插件 {registration.PluginId} 的命令步骤 {stepItem.Id} 没有指定 ProcessFileName")
+                End If
+                result.Add(New Ext插件命令步骤_v2 With {
+                    .PluginId = registration.PluginId,
+                    .ProviderId = registration.Provider.Id,
+                    .StepId = stepItem.Id.Trim(),
+                    .DisplayName = If(String.IsNullOrWhiteSpace(stepItem.DisplayName), stepItem.Id.Trim(), stepItem.DisplayName.Trim()),
+                    .ProcessFileName = stepItem.ProcessFileName.Trim(),
+                    .Arguments = If(stepItem.Arguments, "").Trim(),
+                    .WorkingDirectory = If(stepItem.WorkingDirectory, "").Trim(),
+                    .Placement = If(stepItem.Placement = ExtPluginCommandStepPlacement.BeforeNative,
+                                    Ext插件命令步骤位置_v2.原生步骤之前,
+                                    Ext插件命令步骤位置_v2.原生步骤之后),
+                    .Order = stepItem.Order,
+                    .ParseFFmpegProgress = stepItem.ParseFFmpegProgress
+                })
+            Next
+        Next
+        Return result
+    End Function
+
+    Private Function 创建插件命令上下文(source As Ext插件命令解析上下文_v2,
+                                  pluginId As String) As ExtPluginCommandContext
+        Dim result As New ExtPluginCommandContext With {
+            .PluginId = pluginId,
+            .PresetJson = If(source.PresetJson, ""),
+            .PluginStateJson = 读取插件命令状态(source.PresetJson, pluginId),
+            .InputPath = If(source.InputPath, ""),
+            .OutputPath = If(source.OutputPath, ""),
+            .TaskId = If(source.TaskId, ""),
+            .PhaseName = If(source.PhaseName, ""),
+            .IsPreview = source.IsPreview
+        }
+        For Each pair In source.Properties
+            result.Properties(pair.Key) = pair.Value
+        Next
+        Return result
+    End Function
+
+    Private Function 读取插件命令状态(presetJson As String, pluginId As String) As String
+        If String.IsNullOrWhiteSpace(presetJson) OrElse String.IsNullOrWhiteSpace(pluginId) Then Return "{}"
+        Try
+            Using document = JsonDocument.Parse(presetJson)
+                Dim extensionData As JsonElement
+                If Not document.RootElement.TryGetProperty("插件扩展数据", extensionData) OrElse
+                   extensionData.ValueKind <> JsonValueKind.Object Then Return "{}"
+                For Each propertyItem In extensionData.EnumerateObject()
+                    If Not String.Equals(propertyItem.Name, pluginId, StringComparison.OrdinalIgnoreCase) Then Continue For
+                    If propertyItem.Value.ValueKind = JsonValueKind.String Then
+                        Return 规范化状态Json(propertyItem.Value.GetString())
+                    End If
+                    Return 规范化状态Json(propertyItem.Value.GetRawText())
+                Next
+            End Using
+        Catch ex As JsonException
+            Return "{}"
+        End Try
+        Return "{}"
+    End Function
+
+    Private Function 转换命令参数位置(position As ExtPluginCommandArgumentPosition) As Ext插件命令参数位置_v2
+        Select Case position
+            Case ExtPluginCommandArgumentPosition.Global : Return Ext插件命令参数位置_v2.全局
+            Case ExtPluginCommandArgumentPosition.BeforeInput : Return Ext插件命令参数位置_v2.输入之前
+            Case ExtPluginCommandArgumentPosition.AfterInput : Return Ext插件命令参数位置_v2.输入之后
+            Case ExtPluginCommandArgumentPosition.BeforeOutput : Return Ext插件命令参数位置_v2.输出之前
+            Case ExtPluginCommandArgumentPosition.AfterOutput : Return Ext插件命令参数位置_v2.输出之后
+            Case Else : Throw New ArgumentOutOfRangeException(NameOf(position), position, "未知的插件命令参数位置")
+        End Select
     End Function
 
     Private Function 转换到SDK上下文(source As Ext插件管线上下文_v2, pluginId As String) As ExtPluginPipelineContext
@@ -314,6 +520,19 @@ Friend Module Ext插件扩展宿主_v2
     End Function
 
     Private Function 替换锚点资源ID(anchorId As String) As String
+        SyncLock 同步锁
+            Dim descriptor = 参数控件目录.Values.FirstOrDefault(
+                Function(item) String.Equals(item.AnchorId, anchorId, StringComparison.OrdinalIgnoreCase))
+            If descriptor IsNot Nothing Then Return descriptor.ResourceId
+        End SyncLock
+
+        Dim legacyResourceId = 尝试获取传统锚点资源ID(anchorId)
+        If legacyResourceId <> "" Then Return legacyResourceId
+        Throw New InvalidOperationException(
+            $"锚点 {anchorId} 是插入位置而不是可替换原生控件；请使用默认插入模式")
+    End Function
+
+    Private Function 尝试获取传统锚点资源ID(anchorId As String) As String
         Select Case anchorId
             Case ExtFFmpegFreeUIUiAnchors.ParametersVideoQualityMode
                 Return ExtFFmpegFreeUIPluginResources.ParametersVideoQualityModeControl
@@ -321,8 +540,19 @@ Friend Module Ext插件扩展宿主_v2
                  ExtFFmpegFreeUIUiAnchors.ParametersVideoQualityValue
                 Return ExtFFmpegFreeUIPluginResources.ParametersVideoQualityFields
             Case Else
-                Throw New InvalidOperationException(
-                    $"锚点 {anchorId} 是插入位置而不是可替换原生控件；请使用默认插入模式")
+                Return ""
+        End Select
+    End Function
+
+    Private Function 尝试获取参数控件传统资源ID(pageId As String, controlName As String) As String
+        If Not String.Equals(If(pageId, "").Trim(), "video-quality", StringComparison.OrdinalIgnoreCase) Then Return ""
+        Select Case If(controlName, "").Trim()
+            Case "MCB_全局质量控制方式"
+                Return ExtFFmpegFreeUIPluginResources.ParametersVideoQualityModeControl
+            Case "MCB_质量参数名称", "MTB_质量值"
+                Return ExtFFmpegFreeUIPluginResources.ParametersVideoQualityFields
+            Case Else
+                Return ""
         End Select
     End Function
 
@@ -457,6 +687,140 @@ Friend Module Ext插件扩展宿主_v2
             Case Else
                 Throw New ArgumentException($"下拉项锚点 {anchorId} 没有对应的冲突资源")
         End Select
+    End Function
+
+    Private Function 注册命令参数提供器(pluginId As String,
+                                  provider As ExtPluginCommandParameterProvider) As IDisposable
+        If provider Is Nothing Then Throw New ArgumentNullException(NameOf(provider))
+        If String.IsNullOrWhiteSpace(provider.Id) Then Throw New ArgumentException("命令参数提供器 ID 不能为空")
+        If provider.Callback Is Nothing Then Throw New ArgumentException("命令参数提供器回调不能为空")
+        Dim resourceRegistration = 注册资源声明(
+            pluginId,
+            New ExtPluginResourceClaim(
+                "command-parameters:" & provider.Id,
+                ExtFFmpegFreeUIPluginResources.CommandArguments,
+                ExtPluginResourceAccess.OrderedTransform) With {
+                .Purpose = "向 FFmpeg 命令的稳定位置贡献参数"
+            })
+
+        Try
+            Dim registration As New 已注册命令参数提供器 With {.PluginId = pluginId, .Provider = provider}
+            SyncLock 同步锁
+                If 命令参数提供器列表.Any(
+                    Function(item) String.Equals(item.PluginId, pluginId, StringComparison.OrdinalIgnoreCase) AndAlso
+                                   String.Equals(item.Provider.Id, provider.Id, StringComparison.OrdinalIgnoreCase)) Then
+                    Throw New InvalidOperationException($"插件 {pluginId} 已注册命令参数提供器 {provider.Id}")
+                End If
+                命令参数提供器列表.Add(registration)
+            End SyncLock
+            Return New 注销句柄(
+                Sub()
+                    SyncLock 同步锁
+                        命令参数提供器列表.Remove(registration)
+                    End SyncLock
+                    resourceRegistration.Dispose()
+                End Sub)
+        Catch
+            resourceRegistration.Dispose()
+            Throw
+        End Try
+    End Function
+
+    Private Function 注册命令步骤提供器(pluginId As String,
+                                  provider As ExtPluginCommandStepProvider) As IDisposable
+        If provider Is Nothing Then Throw New ArgumentNullException(NameOf(provider))
+        If String.IsNullOrWhiteSpace(provider.Id) Then Throw New ArgumentException("命令步骤提供器 ID 不能为空")
+        If provider.Callback Is Nothing Then Throw New ArgumentException("命令步骤提供器回调不能为空")
+        Dim resourceRegistration = 注册资源声明(
+            pluginId,
+            New ExtPluginResourceClaim(
+                "command-steps:" & provider.Id,
+                ExtFFmpegFreeUIPluginResources.CommandPlan,
+                ExtPluginResourceAccess.OrderedTransform) With {
+                .Purpose = "向任务命令计划贡献可预览的外部进程步骤"
+            })
+
+        Try
+            Dim registration As New 已注册命令步骤提供器 With {.PluginId = pluginId, .Provider = provider}
+            SyncLock 同步锁
+                If 命令步骤提供器列表.Any(
+                    Function(item) String.Equals(item.PluginId, pluginId, StringComparison.OrdinalIgnoreCase) AndAlso
+                                   String.Equals(item.Provider.Id, provider.Id, StringComparison.OrdinalIgnoreCase)) Then
+                    Throw New InvalidOperationException($"插件 {pluginId} 已注册命令步骤提供器 {provider.Id}")
+                End If
+                命令步骤提供器列表.Add(registration)
+            End SyncLock
+            Return New 注销句柄(
+                Sub()
+                    SyncLock 同步锁
+                        命令步骤提供器列表.Remove(registration)
+                    End SyncLock
+                    resourceRegistration.Dispose()
+                End Sub)
+        Catch
+            resourceRegistration.Dispose()
+            Throw
+        End Try
+    End Function
+
+    Private Function 获取命令参数提供器() As List(Of 已注册命令参数提供器)
+        SyncLock 同步锁
+            Return 命令参数提供器列表.
+                OrderBy(Function(item) item.Provider.Order).
+                ThenBy(Function(item) item.PluginId, StringComparer.OrdinalIgnoreCase).
+                ThenBy(Function(item) item.Provider.Id, StringComparer.OrdinalIgnoreCase).
+                ToList()
+        End SyncLock
+    End Function
+
+    Private Function 获取命令步骤提供器() As List(Of 已注册命令步骤提供器)
+        SyncLock 同步锁
+            Return 命令步骤提供器列表.
+                OrderBy(Function(item) item.Provider.Order).
+                ThenBy(Function(item) item.PluginId, StringComparer.OrdinalIgnoreCase).
+                ThenBy(Function(item) item.Provider.Id, StringComparer.OrdinalIgnoreCase).
+                ToList()
+        End SyncLock
+    End Function
+
+    Private Function 获取可用界面锚点() As IReadOnlyCollection(Of String)
+        SyncLock 同步锁
+            Return ExtFFmpegFreeUIUiAnchors.All.
+                Concat(界面锚点列表.Select(Function(item) item.AnchorId)).
+                Distinct(StringComparer.OrdinalIgnoreCase).
+                OrderBy(Function(item) item, StringComparer.OrdinalIgnoreCase).
+                ToList().
+                AsReadOnly()
+        End SyncLock
+    End Function
+
+    Private Function 获取参数页面目录() As IReadOnlyCollection(Of ExtPluginParameterPageDescriptor)
+        SyncLock 同步锁
+            Return 参数页面目录.Values.
+                OrderBy(Function(item) item.PageId, StringComparer.OrdinalIgnoreCase).
+                ToList().
+                AsReadOnly()
+        End SyncLock
+    End Function
+
+    Private Function 获取参数控件目录() As IReadOnlyCollection(Of ExtPluginParameterControlDescriptor)
+        SyncLock 同步锁
+            Return 参数控件目录.Values.
+                OrderBy(Function(item) item.ControlId, StringComparer.OrdinalIgnoreCase).
+                ToList().
+                AsReadOnly()
+        End SyncLock
+    End Function
+
+    Private Function 获取可用资源() As IReadOnlyCollection(Of String)
+        SyncLock 同步锁
+            Return ExtFFmpegFreeUIPluginResources.All.
+                Concat(参数控件目录.Values.Select(Function(item) item.ResourceId)).
+                Distinct(StringComparer.OrdinalIgnoreCase).
+                OrderBy(Function(item) item, StringComparer.OrdinalIgnoreCase).
+                ToList().
+                AsReadOnly()
+        End SyncLock
     End Function
 
     Private Function 注册处理器(pluginId As String, handler As ExtPluginPipelineHandler) As IDisposable
@@ -600,7 +964,7 @@ Friend Module Ext插件扩展宿主_v2
         If claim Is Nothing Then Throw New ArgumentNullException(NameOf(claim))
         If String.IsNullOrWhiteSpace(claim.Id) Then Throw New ArgumentException("资源声明 ID 不能为空")
         If String.IsNullOrWhiteSpace(claim.ResourceId) Then Throw New ArgumentException("资源 ID 不能为空")
-        If Not ExtFFmpegFreeUIPluginResources.All.Contains(claim.ResourceId, StringComparer.OrdinalIgnoreCase) Then
+        If Not 是已公开资源(claim.ResourceId) Then
             Throw New ArgumentException($"宿主未公开资源 {claim.ResourceId}")
         End If
 
@@ -640,6 +1004,12 @@ Friend Module Ext插件扩展宿主_v2
     Private Function 资源标识冲突(existingResourceId As String, requestedResourceId As String) As Boolean
         If String.Equals(existingResourceId, requestedResourceId, StringComparison.OrdinalIgnoreCase) Then Return True
 
+        ' 原始整段命令行是声明式参数的父资源；独占接管整段命令时应排除参数提供器。
+        If String.Equals(existingResourceId, ExtFFmpegFreeUIPluginResources.CommandLine, StringComparison.OrdinalIgnoreCase) AndAlso
+           String.Equals(requestedResourceId, ExtFFmpegFreeUIPluginResources.CommandArguments, StringComparison.OrdinalIgnoreCase) Then Return True
+        If String.Equals(requestedResourceId, ExtFFmpegFreeUIPluginResources.CommandLine, StringComparison.OrdinalIgnoreCase) AndAlso
+           String.Equals(existingResourceId, ExtFFmpegFreeUIPluginResources.CommandArguments, StringComparison.OrdinalIgnoreCase) Then Return True
+
         ' 整个质量模式控件是选项集合和模式联动行为的父资源；接管父资源时必须排除两类子扩展。
         Dim qualityModeChildren = New HashSet(Of String)(StringComparer.OrdinalIgnoreCase) From {
             ExtFFmpegFreeUIPluginResources.ParametersVideoQualityModeItems,
@@ -652,6 +1022,14 @@ Friend Module Ext插件扩展宿主_v2
             Return qualityModeChildren.Contains(existingResourceId)
         End If
         Return False
+    End Function
+
+    Private Function 是已公开资源(resourceId As String) As Boolean
+        If ExtFFmpegFreeUIPluginResources.All.Contains(resourceId, StringComparer.OrdinalIgnoreCase) Then Return True
+        SyncLock 同步锁
+            Return 参数控件目录.Values.Any(
+                Function(item) String.Equals(item.ResourceId, resourceId, StringComparison.OrdinalIgnoreCase))
+        End SyncLock
     End Function
 
     Private Function 获取阶段处理器(stageId As String) As List(Of 已注册处理器)
@@ -873,30 +1251,47 @@ Friend Module Ext插件扩展宿主_v2
 
     Private Function 获取或创建插入槽(anchor As 已注册界面锚点) As TableLayoutPanel
         If anchor.Container IsNot Nothing AndAlso Not anchor.Container.IsDisposed Then Return anchor.Container
-        Dim parent = anchor.AnchorControl.Parent
-        If parent Is Nothing Then Throw New InvalidOperationException($"界面锚点 {anchor.AnchorId} 尚未加入父容器")
-        If anchor.AnchorControl.Dock <> DockStyle.Top AndAlso anchor.AnchorControl.Dock <> DockStyle.Bottom Then
-            Throw New InvalidOperationException($"插入型界面锚点 {anchor.AnchorId} 必须引用 DockStyle.Top 或 DockStyle.Bottom 控件")
+
+        Dim isPageSlot = anchor.Position = Ext插件界面锚点位置_v2.容器顶部 OrElse
+                         anchor.Position = Ext插件界面锚点位置_v2.容器底部
+        Dim parent As Control
+        Dim slotDock As DockStyle
+        If isPageSlot Then
+            parent = anchor.AnchorControl
+            slotDock = If(anchor.Position = Ext插件界面锚点位置_v2.容器顶部,
+                          DockStyle.Top,
+                          DockStyle.Bottom)
+        Else
+            parent = anchor.AnchorControl.Parent
+            If parent Is Nothing Then Throw New InvalidOperationException($"界面锚点 {anchor.AnchorId} 尚未加入父容器")
+            If anchor.AnchorControl.Dock <> DockStyle.Top AndAlso anchor.AnchorControl.Dock <> DockStyle.Bottom Then
+                Throw New InvalidOperationException($"插入型界面锚点 {anchor.AnchorId} 必须引用 DockStyle.Top 或 DockStyle.Bottom 控件")
+            End If
+            slotDock = anchor.AnchorControl.Dock
         End If
 
         Dim slot As New TableLayoutPanel With {
-            .Name = "PluginSlot_" & anchor.AnchorId.Replace("."c, "_"c),
+            .Name = "PluginSlot_" & anchor.AnchorId.Replace("."c, "_"c).Replace("/"c, "_"c),
             .AutoSize = True,
             .AutoSizeMode = AutoSizeMode.GrowAndShrink,
             .BackColor = Color.Transparent,
             .ColumnCount = 1,
-            .Dock = anchor.AnchorControl.Dock,
+            .Dock = slotDock,
             .Margin = New Padding(0),
             .Padding = New Padding(0),
             .RowCount = 0
         }
         slot.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
         parent.Controls.Add(slot)
-        Dim targetIndex = parent.Controls.GetChildIndex(anchor.AnchorControl)
-        Dim desiredIndex = If(anchor.Position = Ext插件界面锚点位置_v2.在目标之前,
-                              targetIndex + 1,
-                              targetIndex)
-        parent.Controls.SetChildIndex(slot, Math.Min(Math.Max(desiredIndex, 0), parent.Controls.Count - 1))
+        If isPageSlot Then
+            parent.Controls.SetChildIndex(slot, 0)
+        Else
+            Dim targetIndex = parent.Controls.GetChildIndex(anchor.AnchorControl)
+            Dim desiredIndex = If(anchor.Position = Ext插件界面锚点位置_v2.在目标之前,
+                                  targetIndex + 1,
+                                  targetIndex)
+            parent.Controls.SetChildIndex(slot, Math.Min(Math.Max(desiredIndex, 0), parent.Controls.Count - 1))
+        End If
         anchor.Container = slot
         Return slot
     End Function
@@ -947,6 +1342,7 @@ Friend Module Ext插件扩展宿主_v2
         For Each removal In removals
             在控件线程执行(removal.Item1.AnchorControl,
                     Sub()
+                        清理界面扩展(removal.Item2)
                         If removal.Item2.ReplacedAnchor Then
                             ' Visible/Enabled 的读取值会合并父容器状态，不能作为控件自身快照。
                             removal.Item1.AnchorControl.Visible = True
@@ -959,6 +1355,7 @@ Friend Module Ext插件扩展宿主_v2
     End Sub
 
     Private Sub 移除界面锚点(anchor As 已注册界面锚点)
+        Dim appliedItems As List(Of 已应用界面扩展)
         SyncLock 同步锁
             界面锚点列表.Remove(anchor)
             Dim state = 获取参数面板状态(anchor.Surface)
@@ -968,10 +1365,29 @@ Friend Module Ext插件扩展宿主_v2
             For Each item In anchor.AppliedChoices.Values
                 state.ChoiceContexts.Remove(item.Context)
             Next
+            appliedItems = anchor.Applied.Values.ToList()
             anchor.Applied.Clear()
             anchor.AppliedChoices.Clear()
         End SyncLock
+        For Each item In appliedItems
+            清理界面扩展(item)
+        Next
         anchor.Container?.Dispose()
+    End Sub
+
+    Private Sub 清理界面扩展(applied As 已应用界面扩展)
+        If applied Is Nothing Then Exit Sub
+        SyncLock applied
+            If applied.CleanupCalled Then Exit Sub
+            applied.CleanupCalled = True
+        End SyncLock
+        Try
+            applied.Registration.Extension.Cleanup?.Invoke(applied.Context)
+        Catch ex As Exception
+            Debug.WriteLine(
+                $"[FFmpegFreeUI Plugin/Warning] {applied.Registration.PluginId}: " &
+                $"清理界面扩展 {applied.Registration.Extension.Id} 失败：{ex}")
+        End Try
     End Sub
 
     Private Function 获取参数面板状态(surface As Form_v6_参数面板) As 参数面板插件状态
@@ -1029,7 +1445,7 @@ Friend Module Ext插件扩展宿主_v2
     End Sub
 
     Private NotInheritable Class 插件作用域宿主
-        Implements IExtFFmpegFreeUIHost, IDisposable
+        Implements IExtFFmpegFreeUIHostV23, IDisposable
 
         Private ReadOnly _pluginId As String
         Private ReadOnly _displayName As String
@@ -1037,6 +1453,8 @@ Friend Module Ext插件扩展宿主_v2
         Private ReadOnly _pipeline As IExtPluginPipelineRegistry
         Private ReadOnly _behaviors As IExtPluginBehaviorRegistry
         Private ReadOnly _resources As IExtPluginResourceRegistry
+        Private ReadOnly _parameterPanel As IExtPluginParameterPanelCatalog
+        Private ReadOnly _commands As IExtPluginCommandRegistry
         Private ReadOnly _registrations As New List(Of IDisposable)
         Private ReadOnly _registrationLock As New Object
         Private _disposed As Boolean
@@ -1048,6 +1466,8 @@ Friend Module Ext插件扩展宿主_v2
             _pipeline = New 插件处理注册表(pluginId, AddressOf 跟踪注册)
             _behaviors = New 插件行为注册表(pluginId, AddressOf 跟踪注册)
             _resources = New 插件资源注册表(pluginId, AddressOf 跟踪注册)
+            _parameterPanel = New 插件参数面板目录()
+            _commands = New 插件命令注册表(pluginId, AddressOf 跟踪注册)
         End Sub
 
         Public ReadOnly Property ApiVersion As Version Implements IExtFFmpegFreeUIHost.ApiVersion
@@ -1084,6 +1504,18 @@ Friend Module Ext插件扩展宿主_v2
         Public ReadOnly Property Behaviors As IExtPluginBehaviorRegistry Implements IExtFFmpegFreeUIHost.Behaviors
             Get
                 Return _behaviors
+            End Get
+        End Property
+
+        Public ReadOnly Property ParameterPanel As IExtPluginParameterPanelCatalog Implements IExtFFmpegFreeUIHostV23.ParameterPanel
+            Get
+                Return _parameterPanel
+            End Get
+        End Property
+
+        Public ReadOnly Property Commands As IExtPluginCommandRegistry Implements IExtFFmpegFreeUIHostV23.Commands
+            Get
+                Return _commands
             End Get
         End Property
 
@@ -1129,7 +1561,7 @@ Friend Module Ext插件扩展宿主_v2
 
         Public ReadOnly Property AvailableAnchors As IReadOnlyCollection(Of String) Implements IExtPluginUiRegistry.AvailableAnchors
             Get
-                Return ExtFFmpegFreeUIUiAnchors.All
+                Return 获取可用界面锚点()
             End Get
         End Property
 
@@ -1189,12 +1621,52 @@ Friend Module Ext插件扩展宿主_v2
 
         Public ReadOnly Property AvailableResources As IReadOnlyCollection(Of String) Implements IExtPluginResourceRegistry.AvailableResources
             Get
-                Return ExtFFmpegFreeUIPluginResources.All
+                Return 获取可用资源()
             End Get
         End Property
 
         Public Function Claim(resourceClaim As ExtPluginResourceClaim) As IDisposable Implements IExtPluginResourceRegistry.Claim
             Dim registration = 注册资源声明(_pluginId, resourceClaim)
+            _track.Invoke(registration)
+            Return registration
+        End Function
+    End Class
+
+    Private NotInheritable Class 插件参数面板目录
+        Implements IExtPluginParameterPanelCatalog
+
+        Public ReadOnly Property AvailablePages As IReadOnlyCollection(Of ExtPluginParameterPageDescriptor) Implements IExtPluginParameterPanelCatalog.AvailablePages
+            Get
+                Return 获取参数页面目录()
+            End Get
+        End Property
+
+        Public ReadOnly Property AvailableControls As IReadOnlyCollection(Of ExtPluginParameterControlDescriptor) Implements IExtPluginParameterPanelCatalog.AvailableControls
+            Get
+                Return 获取参数控件目录()
+            End Get
+        End Property
+    End Class
+
+    Private NotInheritable Class 插件命令注册表
+        Implements IExtPluginCommandRegistry
+
+        Private ReadOnly _pluginId As String
+        Private ReadOnly _track As Action(Of IDisposable)
+
+        Public Sub New(pluginId As String, track As Action(Of IDisposable))
+            _pluginId = pluginId
+            _track = track
+        End Sub
+
+        Public Function RegisterParameterProvider(provider As ExtPluginCommandParameterProvider) As IDisposable Implements IExtPluginCommandRegistry.RegisterParameterProvider
+            Dim registration = 注册命令参数提供器(_pluginId, provider)
+            _track.Invoke(registration)
+            Return registration
+        End Function
+
+        Public Function RegisterStepProvider(provider As ExtPluginCommandStepProvider) As IDisposable Implements IExtPluginCommandRegistry.RegisterStepProvider
+            Dim registration = 注册命令步骤提供器(_pluginId, provider)
             _track.Invoke(registration)
             Return registration
         End Function
@@ -1385,6 +1857,16 @@ Friend Module Ext插件扩展宿主_v2
         Public Property Claim As ExtPluginResourceClaim
     End Class
 
+    Private NotInheritable Class 已注册命令参数提供器
+        Public Property PluginId As String
+        Public Property Provider As ExtPluginCommandParameterProvider
+    End Class
+
+    Private NotInheritable Class 已注册命令步骤提供器
+        Public Property PluginId As String
+        Public Property Provider As ExtPluginCommandStepProvider
+    End Class
+
     Private NotInheritable Class 已注册界面锚点
         Public Property AnchorId As String
         Public Property AnchorControl As Control
@@ -1401,6 +1883,7 @@ Friend Module Ext插件扩展宿主_v2
         Public Property Context As 插件界面上下文
         Public Property Control As Control
         Public Property ReplacedAnchor As Boolean
+        Public Property CleanupCalled As Boolean
     End Class
 
     Private NotInheritable Class 已应用安全下拉项

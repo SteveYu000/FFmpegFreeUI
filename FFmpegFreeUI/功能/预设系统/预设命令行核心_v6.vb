@@ -60,12 +60,14 @@ Partial Public Class 预设管理_v6
         Dim lines As New List(Of String)
         For Each item In 阶段列表
             If lines.Count > 0 Then lines.Add("")
-            lines.Add($"{获取命令行进程名(item.阶段)} {item.命令行}")
+            lines.Add($"{获取命令行进程名(item.阶段, item.进程文件名)} {item.命令行}")
         Next
         Return String.Join(vbCrLf, lines)
     End Function
 
-    Public Shared Function 获取命令行进程名(阶段 As 预设数据_v6.命令行阶段) As String
+    Public Shared Function 获取命令行进程名(阶段 As 预设数据_v6.命令行阶段,
+                                  Optional 指定进程文件名 As String = "") As String
+        If Not String.IsNullOrWhiteSpace(指定进程文件名) Then Return 格式化命令行进程名(指定进程文件名)
         If 阶段 = 预设数据_v6.命令行阶段.FFprobe获取时长 Then Return "ffprobe"
         Return 格式化命令行进程名(获取当前FFmpeg进程文件名())
     End Function
@@ -94,21 +96,26 @@ Partial Public Class 预设管理_v6
         If a Is Nothing Then Return 结果
         If Not String.IsNullOrWhiteSpace(a.自定义参数_完全自己写) Then
             结果.Add(生成命令行(a, 输入文件, 输出文件, 预设数据_v6.命令行阶段.普通单次, 媒体总时长, 帧服务器脚本后缀))
+        Else
+            If a.剪辑区间_方法 = 预设数据_v6.剪辑方法.掐头去尾 AndAlso String.IsNullOrWhiteSpace(媒体总时长) Then
+                结果.Add(生成命令行(a, 输入文件, 输出文件, 预设数据_v6.命令行阶段.FFprobe获取时长, 帧服务器脚本后缀:=帧服务器脚本后缀))
+            End If
+
+            If 可以生成二次编码(a) Then
+                结果.Add(生成命令行(a, 输入文件, 输出文件, 预设数据_v6.命令行阶段.二次编码第一遍, 媒体总时长, 帧服务器脚本后缀))
+                结果.Add(生成命令行(a, 输入文件, 输出文件, 预设数据_v6.命令行阶段.二次编码第二遍, 媒体总时长, 帧服务器脚本后缀))
+            Else
+                结果.Add(生成命令行(a, 输入文件, 输出文件, 预设数据_v6.命令行阶段.普通单次, 媒体总时长, 帧服务器脚本后缀))
+            End If
+        End If
+
+        ' 实际任务在 ffprobe 完成后会重建整个计划；此时不能提前加入插件步骤，否则前置步骤会执行两次。
+        Dim isPreview = String.IsNullOrWhiteSpace(帧服务器脚本后缀)
+        If Not isPreview AndAlso String.IsNullOrWhiteSpace(媒体总时长) AndAlso
+           结果.Any(Function(item) item.阶段 = 预设数据_v6.命令行阶段.FFprobe获取时长) Then
             Return 结果
         End If
-
-        If a.剪辑区间_方法 = 预设数据_v6.剪辑方法.掐头去尾 AndAlso String.IsNullOrWhiteSpace(媒体总时长) Then
-            结果.Add(生成命令行(a, 输入文件, 输出文件, 预设数据_v6.命令行阶段.FFprobe获取时长, 帧服务器脚本后缀:=帧服务器脚本后缀))
-        End If
-
-        If 可以生成二次编码(a) Then
-            结果.Add(生成命令行(a, 输入文件, 输出文件, 预设数据_v6.命令行阶段.二次编码第一遍, 媒体总时长, 帧服务器脚本后缀))
-            结果.Add(生成命令行(a, 输入文件, 输出文件, 预设数据_v6.命令行阶段.二次编码第二遍, 媒体总时长, 帧服务器脚本后缀))
-        Else
-            结果.Add(生成命令行(a, 输入文件, 输出文件, 预设数据_v6.命令行阶段.普通单次, 媒体总时长, 帧服务器脚本后缀))
-        End If
-
-        Return 结果
+        Return 合并插件命令步骤(结果, a, 输入文件, 输出文件, 帧服务器脚本后缀, isPreview)
     End Function
 
     Public Shared Function 生成命令行(a As 预设数据_v6,
@@ -136,7 +143,11 @@ Partial Public Class 预设管理_v6
         输出文件 = beforeBuild.OutputPath
 
         If a.自定义参数_完全自己写.Trim() <> "" Then
-            结果.命令行 = 规范命令行换行(应用自定义参数通配字符串(a.自定义参数_完全自己写, 输入文件, 输出文件))
+            Dim customCommandContext = 创建插件命令解析上下文(
+                a, 输入文件, 输出文件, 帧服务器脚本后缀, 阶段, fullyCustom:=True)
+            Dim customPluginArguments = Ext插件扩展桥接_v2.解析插件命令参数(customCommandContext)
+            结果.命令行 = 规范命令行换行(
+                应用插件参数到完全自写命令(a.自定义参数_完全自己写, customPluginArguments, 输入文件, 输出文件))
             Return 完成插件命令行处理(结果, a, 输入文件, 输出文件, 帧服务器脚本后缀)
         End If
 
@@ -150,6 +161,7 @@ Partial Public Class 预设管理_v6
         Dim 输入前 As New List(Of String)
         Dim 主输入后 As New List(Of String)
         Dim 额外输入 As New List(Of String)
+        Dim 输入后 As New List(Of String)
         Dim 输出前 As New List(Of String)
         Dim 输出后 As New List(Of String)
 
@@ -166,11 +178,19 @@ Partial Public Class 预设管理_v6
             阶段 = 预设数据_v6.命令行阶段.普通单次
             结果.阶段 = 阶段
         End If
+
         If (阶段 = 预设数据_v6.命令行阶段.二次编码第一遍 OrElse 阶段 = 预设数据_v6.命令行阶段.二次编码第二遍) AndAlso 二次编码明显不兼容(a) Then
             结果.说明 = "二次编码需要实际重编码视频流，当前视频编码设置不适用，已按普通单次生成。"
             阶段 = 预设数据_v6.命令行阶段.普通单次
             结果.阶段 = 阶段
         End If
+
+        Dim commandContext = 创建插件命令解析上下文(
+            a, 输入文件, 输出文件, 帧服务器脚本后缀, 阶段, fullyCustom:=False)
+        Dim pluginArguments = Ext插件扩展桥接_v2.解析插件命令参数(commandContext)
+        添加插件命令参数(前置, pluginArguments, Ext插件命令参数位置_v2.全局, 输入文件, 输出文件)
+        添加插件命令参数(输入前, pluginArguments, Ext插件命令参数位置_v2.输入之前, 输入文件, 输出文件)
+        添加插件命令参数(输入后, pluginArguments, Ext插件命令参数位置_v2.输入之后, 输入文件, 输出文件)
 
         Dim 滤镜图 = 生成滤镜图(a, 仅视频:=(阶段 = 预设数据_v6.命令行阶段.二次编码第一遍), 输入文件:=输入文件, 输出文件:=输出文件)
         结果.滤镜图 = 滤镜图.滤镜图
@@ -202,6 +222,8 @@ Partial Public Class 预设管理_v6
             输出前.AddRange(附加片段.输出前)
         End If
         AddRaw(输出前, 应用自定义参数通配字符串(a.自定义参数_之后参数, 输入文件, 输出文件))
+        添加插件命令参数(输出前, pluginArguments, Ext插件命令参数位置_v2.输出之前, 输入文件, 输出文件)
+        添加插件命令参数(输出后, pluginArguments, Ext插件命令参数位置_v2.输出之后, 输入文件, 输出文件)
 
         Dim 丢弃输出 = 阶段 = 预设数据_v6.命令行阶段.二次编码第一遍 OrElse a.输出_输出文件参数使用方法 = 预设数据_v6.输出文件参数使用方法.声明丢弃输出
         Dim 输出目标 = If(丢弃输出, "NUL", 输出文件)
@@ -213,6 +235,7 @@ Partial Public Class 预设管理_v6
         命令.AddRange(主输入参数.Where(Function(x) x <> ""))
         命令.AddRange(主输入后.Where(Function(x) x <> ""))
         命令.AddRange(额外输入.Where(Function(x) x <> ""))
+        命令.AddRange(输入后.Where(Function(x) x <> ""))
         命令.AddRange(输出前.Where(Function(x) x <> ""))
         If 丢弃输出 Then
             命令.Add("-f null")
@@ -225,6 +248,142 @@ Partial Public Class 预设管理_v6
         命令.AddRange(输出后.Where(Function(x) x <> ""))
         结果.命令行 = String.Join(" ", 命令.Where(Function(x) Not String.IsNullOrWhiteSpace(x)))
         Return 完成插件命令行处理(结果, a, 输入文件, 输出文件, 帧服务器脚本后缀)
+    End Function
+
+    Private Const 插件全局参数占位符 As String = "<ext:global>"
+    Private Const 插件输入前参数占位符 As String = "<ext:before-input>"
+    Private Const 插件输入后参数占位符 As String = "<ext:after-input>"
+    Private Const 插件输出前参数占位符 As String = "<ext:before-output>"
+    Private Const 插件输出后参数占位符 As String = "<ext:after-output>"
+
+    Private Shared Function 创建插件命令解析上下文(preset As 预设数据_v6,
+                                            inputPath As String,
+                                            outputPath As String,
+                                            taskId As String,
+                                            stage As 预设数据_v6.命令行阶段,
+                                            fullyCustom As Boolean) As Ext插件命令解析上下文_v2
+        Dim context As New Ext插件命令解析上下文_v2 With {
+            .PresetJson = Ext插件扩展桥接_v2.序列化预设(preset),
+            .InputPath = If(inputPath, ""),
+            .OutputPath = If(outputPath, ""),
+            .TaskId = If(taskId, ""),
+            .PhaseName = stage.ToString(),
+            .IsPreview = String.IsNullOrWhiteSpace(taskId)
+        }
+        context.Properties("commandKind") = "ffmpeg"
+        context.Properties("fullyCustom") = If(fullyCustom, "true", "false")
+        Return context
+    End Function
+
+    Private Shared Sub 添加插件命令参数(target As List(Of String),
+                                arguments As IEnumerable(Of Ext插件命令参数_v2),
+                                position As Ext插件命令参数位置_v2,
+                                inputPath As String,
+                                outputPath As String)
+        For Each item In arguments.Where(Function(value) value.Position = position)
+            AddRaw(target, 应用自定义参数通配字符串(item.Text, inputPath, outputPath))
+        Next
+    End Sub
+
+    Private Shared Function 获取插件命令参数文本(arguments As IEnumerable(Of Ext插件命令参数_v2),
+                                          position As Ext插件命令参数位置_v2) As String
+        Return String.Join(" ", arguments.
+            Where(Function(item) item.Position = position AndAlso Not String.IsNullOrWhiteSpace(item.Text)).
+            Select(Function(item) item.Text.Trim()))
+    End Function
+
+    Private Shared Function 应用插件参数到完全自写命令(template As String,
+                                             arguments As IReadOnlyCollection(Of Ext插件命令参数_v2),
+                                             inputPath As String,
+                                             outputPath As String) As String
+        Dim result = If(template, "")
+        Dim positions = New Dictionary(Of Ext插件命令参数位置_v2, String) From {
+            {Ext插件命令参数位置_v2.全局, 插件全局参数占位符},
+            {Ext插件命令参数位置_v2.输入之前, 插件输入前参数占位符},
+            {Ext插件命令参数位置_v2.输入之后, 插件输入后参数占位符},
+            {Ext插件命令参数位置_v2.输出之前, 插件输出前参数占位符},
+            {Ext插件命令参数位置_v2.输出之后, 插件输出后参数占位符}
+        }
+        Dim missing As New Dictionary(Of Ext插件命令参数位置_v2, String)
+        For Each pair In positions
+            Dim text = 获取插件命令参数文本(arguments, pair.Key)
+            If result.IndexOf(pair.Value, StringComparison.OrdinalIgnoreCase) >= 0 Then
+                result = result.Replace(pair.Value, text, StringComparison.OrdinalIgnoreCase)
+            ElseIf text <> "" Then
+                missing(pair.Key) = text
+            End If
+        Next
+
+        Dim prefix = String.Join(" ", {
+            If(missing.GetValueOrDefault(Ext插件命令参数位置_v2.全局), ""),
+            If(missing.GetValueOrDefault(Ext插件命令参数位置_v2.输入之前), "")
+        }.Where(Function(item) item <> ""))
+        Dim middle = String.Join(" ", {
+            If(missing.GetValueOrDefault(Ext插件命令参数位置_v2.输入之后), ""),
+            If(missing.GetValueOrDefault(Ext插件命令参数位置_v2.输出之前), "")
+        }.Where(Function(item) item <> ""))
+        Dim suffix = If(missing.GetValueOrDefault(Ext插件命令参数位置_v2.输出之后), "")
+
+        If middle <> "" Then
+            Dim outputIndex = result.LastIndexOf(输出占位符, StringComparison.OrdinalIgnoreCase)
+            If outputIndex >= 0 Then
+                result = result.Insert(outputIndex, middle & " ")
+            Else
+                result = result.TrimEnd() & " " & middle
+            End If
+        End If
+        If prefix <> "" Then result = prefix & " " & result.TrimStart()
+        If suffix <> "" Then result = result.TrimEnd() & " " & suffix
+        Return 应用自定义参数通配字符串(result, inputPath, outputPath)
+    End Function
+
+    Private Shared Function 合并插件命令步骤(nativeSteps As List(Of 预设数据_v6.命令行生成结果),
+                                     preset As 预设数据_v6,
+                                     inputPath As String,
+                                     outputPath As String,
+                                     taskId As String,
+                                     isPreview As Boolean) As List(Of 预设数据_v6.命令行生成结果)
+        Dim context As New Ext插件命令解析上下文_v2 With {
+            .PresetJson = Ext插件扩展桥接_v2.序列化预设(preset),
+            .InputPath = If(inputPath, ""),
+            .OutputPath = If(outputPath, ""),
+            .TaskId = If(taskId, ""),
+            .PhaseName = "CommandPlan",
+            .IsPreview = isPreview
+        }
+        context.Properties("nativeStepCount") = nativeSteps.Count.ToString(Globalization.CultureInfo.InvariantCulture)
+        context.Properties("fullyCustom") = If(Not String.IsNullOrWhiteSpace(preset.自定义参数_完全自己写), "true", "false")
+        Dim pluginSteps = Ext插件扩展桥接_v2.解析插件命令步骤(context)
+        If pluginSteps.Count = 0 Then Return nativeSteps
+
+        Dim result As New List(Of 预设数据_v6.命令行生成结果)
+        result.AddRange(pluginSteps.
+            Where(Function(item) item.Placement = Ext插件命令步骤位置_v2.原生步骤之前).
+            Select(Function(item) 转换插件命令步骤(item, inputPath, outputPath)))
+        result.AddRange(nativeSteps)
+        result.AddRange(pluginSteps.
+            Where(Function(item) item.Placement = Ext插件命令步骤位置_v2.原生步骤之后).
+            Select(Function(item) 转换插件命令步骤(item, inputPath, outputPath)))
+        Return result
+    End Function
+
+    Private Shared Function 转换插件命令步骤(stepItem As Ext插件命令步骤_v2,
+                                     inputPath As String,
+                                     outputPath As String) As 预设数据_v6.命令行生成结果
+        Return New 预设数据_v6.命令行生成结果 With {
+            .阶段 = 预设数据_v6.命令行阶段.普通单次,
+            .进程文件名 = stepItem.ProcessFileName,
+            .工作目录 = stepItem.WorkingDirectory,
+            .命令行 = 应用自定义参数通配字符串(stepItem.Arguments, inputPath, outputPath),
+            .显示名称 = stepItem.DisplayName,
+            .说明 = $"Ext 插件 {stepItem.PluginId} 的命令步骤",
+            .是插件步骤 = True,
+            .插件ID = stepItem.PluginId,
+            .插件提供器ID = stepItem.ProviderId,
+            .插件步骤ID = stepItem.StepId,
+            .使用宿主FFmpeg参数包装 = False,
+            .解析FFmpeg进度 = stepItem.ParseFFmpegProgress
+        }
     End Function
 
     Private Shared Function 完成插件命令行处理(result As 预设数据_v6.命令行生成结果,

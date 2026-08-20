@@ -10,14 +10,14 @@ Imports FFmpegFreeUI.Ext.PluginSdk
 
 ''' <summary>
 ''' VB.NET 综合示例：以“自动质量策略、命令审计、VMAF 后处理”为应用场景，展示
-''' Ext Plugin API v2.2 的安全下拉项、行为点、资源声明、全部 UI 锚点和处理阶段。
+    ''' Ext Plugin API v2.2 兼容基线的安全下拉项、行为点、资源声明、6 个传统 UI 锚点和全部处理阶段。
 ''' </summary>
 Partial Public NotInheritable Class VbVmafPlugin
     Implements IExtFFmpegFreeUIPlugin
 
     Friend Const 插件ID As String = "sample.vb-complete-api"
     Friend Const 插件标记 As String = "[VB API 示例]"
-    Private Shared ReadOnly 所需API版本 As Version = ExtFFmpegFreeUIPluginApi.Version
+    Private Shared ReadOnly 所需API版本 As New Version(2, 2, 0)
 
     Private ReadOnly 注册项 As New List(Of IDisposable)
     Private ReadOnly 任务会话表 As New ConcurrentDictionary(Of String, 任务会话)(StringComparer.OrdinalIgnoreCase)

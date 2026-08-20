@@ -2,7 +2,7 @@
 
 仓库标识：`FFmpegFreeUI-API-Extended-Edition`
 
-当前版本：`v6.1.30-ext.1+v2.2`（官方基线 `v6.1.30`、扩展修订 `ext.1`、Ext API `v2.2`）
+当前版本：`v6.1.30-ext.2+v2.3`（官方基线 `v6.1.30`、扩展修订 `ext.2`、Ext API `v2.3`）
 
 版本规则：`v{官方版本号}-ext.{扩展修订号}+v{Ext API 主版本.次版本}`。
 
@@ -12,8 +12,10 @@
 
 Ext Plugin API v2 补充官方插件 API 尚未提供的能力，主要包括：
 
-- 在宿主公开的稳定 UI 锚点插入输入框、下拉框、按钮或自定义控件；
-- 装饰公开的原生控件，并把插件状态随 v6 预设保存；
+- 发现参数面板全部页面和原生控件，读取、修改、装饰或按资源租约替换控件；
+- 在每个参数页顶部或底部插入输入框、下拉框、按钮及任意 WinForms 控件，并把插件状态随 v6 预设保存；
+- 声明式追加 FFmpeg 参数，使参数预览、命令模板和实际执行使用同一结果；
+- 把插件自定义外部命令注册为可预览、可取消、受退出码和日志统一管理的队列步骤；
 - 在预设、队列、任务准备、命令构建、外部进程和任务终态阶段注册有序处理器；
 - 在异步任务阶段接收停止令牌，并向原生任务日志报告进度和结构化结果。
 
@@ -31,7 +33,7 @@ Ext Plugin API v2 是可选组件。只有程序根目录同时存在 `FFmpegFre
 
 完整的接入方法、UI 锚点、处理阶段和可修改字段，请阅读 [Ext Plugin API v2 中文开发指南](doc/Ext-Plugin-API-v2.zh-CN.md)。
 
-仓库同时提供 [C# 全接口综合示例](Samples/FFmpegFreeUI.Ext.PluginApi.Sample) 和 [VB.NET 全接口综合示例](Samples/FFmpegFreeUI.Ext.PluginApi.VbVmafSample)。两个示例均覆盖全部公开 UI 锚点和处理阶段，分别以 SHA-256 与 VMAF 展示成功后处理。
+仓库同时提供 [C# v2.3 综合示例](Samples/FFmpegFreeUI.Ext.PluginApi.Sample) 和 [VB.NET v2.2 兼容基线示例](Samples/FFmpegFreeUI.Ext.PluginApi.VbVmafSample)。C# 示例覆盖动态参数控件、页面插入、声明式参数和自定义命令步骤；两者分别以 SHA-256 与 VMAF 展示成功后处理。
 
 ---
 

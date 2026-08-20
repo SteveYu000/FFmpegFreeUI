@@ -18,10 +18,10 @@
     <AssemblyName>FFmpegFreeUI</AssemblyName>
     <Product>FFmpegFreeUI API Extended Edition</Product>
     <PackageId>FFmpegFreeUI-API-Extended-Edition</PackageId>
-	<AssemblyVersion>6.1.30.1</AssemblyVersion>
-	<FileVersion>6.1.30.1</FileVersion>
-	<Version>6.1.30-ext.1+v2.2</Version>
-    <InformationalVersion>v6.1.30-ext.1+v2.2</InformationalVersion>
+	<AssemblyVersion>6.1.30.2</AssemblyVersion>
+	<FileVersion>6.1.30.2</FileVersion>
+	<Version>6.1.30-ext.2+v2.3</Version>
+    <InformationalVersion>v6.1.30-ext.2+v2.3</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <ApplicationIcon>ico.ico</ApplicationIcon>
