@@ -14,6 +14,7 @@
 - [3. 从零创建插件项目](#create-project)
 - [4. 实现插件入口与选择官方 API](#plugin-entry)
 - [5. 宿主总入口 `IExtFFmpegFreeUIHost`](#host-interface)
+- [插件管理、启用状态与全局顺序](#plugin-manager-order)
 
 ### 按能力选读
 
@@ -168,19 +169,13 @@ dotnet --list-sdks
 在完整源码仓库中首次构建：
 
 ```powershell
-git clone --recurse-submodules https://github.com/SteveYu000/FFmpegFreeUI-API-Extended-Edition.git
+git clone https://github.com/SteveYu000/FFmpegFreeUI-API-Extended-Edition.git
 cd .\FFmpegFreeUI-API-Extended-Edition
 dotnet restore .\FFmpegFreeUI-API-Extended-Edition.sln
 dotnet build .\FFmpegFreeUI-API-Extended-Edition.sln -c Debug --no-restore
 ```
 
-如果仓库已经克隆但缺少 `LakeUI` 目录，先执行：
-
-```powershell
-git submodule update --init --recursive
-```
-
-主程序使用固定提交的 LakeUI 源码，是因为官方 v6.1.39 所需的部分界面接口尚未进入 NuGet 稳定包。只开发独立 Ext 插件时无需直接引用或调用 LakeUI。
+主程序会在还原时自动从 NuGet 获取 `LakeUI 3.23.0`。只开发独立 Ext 插件时无需直接引用或调用 LakeUI。
 
 ### 2.2 SDK 引用与编辑器提示
 
@@ -462,7 +457,7 @@ End Class
 
 `Initialize` 在启动加载插件时调用。这里只做版本检查和轻量注册，不要同步扫描大量文件、访问网络或等待外部进程。初始化抛出异常会导致当前插件加载失败。
 
-注册方法返回 `IDisposable`。宿主会跟踪这些句柄，并在插件作用域释放时按相反顺序注销；插件也可保存句柄以便主动提前注销。当前版本没有插件热重载，修改 DLL 后应完全退出并重新启动 FFmpegFreeUI。
+注册方法返回 `IDisposable`。宿主会跟踪这些句柄，并在插件作用域释放时按相反顺序注销；插件也可保存句柄以便主动提前注销。当前版本没有插件热重载，修改 DLL 后应完全退出并重新启动 FFmpegFreeUI。“插件管理”中的启用/禁用开关也会提示重启，不会在任务进行中强行卸载程序集。
 
 <a id="host-interface"></a>
 
@@ -836,11 +831,29 @@ if (host.Pipeline.AvailableStages.Contains(
 
 对同一个上下文，同一阶段的处理器不是并行执行，而是按下面的稳定顺序逐个等待：
 
-1. `Order` 从小到大；
-2. `Order` 相同时按插件 ID；
-3. 仍相同时按处理器 ID。
+1. “插件管理”中该插件的全局顺序；
+2. 同一插件或同一全局位置内，处理器 `Order` 从小到大；
+3. 再按插件 ID；
+4. 仍相同时按处理器 ID。
 
 每个处理器成功返回后，宿主把它对上下文的修改复制回共享上下文，所以下一个处理器能看到前一个处理器的修改，也可能再次覆盖这些修改。不同阶段的 `Order` 互不比较。
+
+<a id="plugin-manager-order"></a>
+
+#### 插件管理器的全局顺序
+
+主页面“插件管理”列出 `Plugin` 目录中的所有 `*.3fui.dll`。它会显示插件是否启用、官方 API / Ext API / 双接口类型、插件和程序集版本、Ext SDK 程序集引用版本、推断的最低 Ext API 版本、实际 Ext 插件 ID、加载状态与错误。类型和最低 API 是在不执行插件代码的情况下读取程序集元数据得到的；“最低 API”属于保守推断，插件发布说明仍应明确写出真实要求。
+
+拖动列表或使用上移/下移会立即改变后续调用的全局顺序：
+
+- 官方 `task.*` 事件按插件全局顺序逐个调用，同一插件的多个订阅再按注册先后调用；
+- Ext 管线处理器、声明式参数提供器和命令步骤提供器先按插件全局顺序，再按各自 `Order`；
+- 行为点必须先保持 `BeforeNative → ReplaceNative → AfterNative` 的阶段语义，每个阶段内部才按插件全局顺序和处理器 `Order`；
+- UI 扩展仍按锚点内自己的 `Order` 排列，插件管理顺序不会改变页面布局。
+
+新安装且从未排序的环境中，所有插件的全局优先级相同，Ext 宿主继续按原有 `Order → PluginId → HandlerId` 规则执行，以兼容旧插件。第一次手动调整列表后，全局顺序成为第一排序键，并写入 `Plugin/ExtPluginManager.json`。排序对已经加载的回调立即生效；若顺序改变了启动时的资源抢占结果或插件当前加载失败，仍需重启后重新加载。
+
+官方队列订阅类型是同步 `Action`。宿主能保证“前一个回调返回后再调用下一个”，但无法等待插件在回调内部自行启动且未等待的后台任务。需要确保评分完成后才能删除源文件时，应把这类工作放入可等待的 Ext 异步阶段，或者让官方回调在工作真正完成后才返回。
 
 当前实现采用失败即停：
 
@@ -938,7 +951,7 @@ _registrations.Add(host.Commands.RegisterParameterProvider(
     }));
 ```
 
-提供器和参数都按 `Order` 排序，相同值再按插件/提供器 ID 稳定排序。宿主自动申请 `ext.command.arguments` 的 `OrderedTransform` 租约。回调可能因参数预览、预设列表、任务准备、重建和二次编码反复执行，必须纯计算、快速、幂等，不能在这里启动进程、访问网络或产生一次性文件。
+参数提供器先按“插件管理”的全局顺序，再按提供器 `Order`、插件 ID 和提供器 ID；同一提供器返回的参数按参数自己的 `Order` 排序。尚未手动设置全局顺序时，所有插件处于同一全局位置，因此行为与旧版的提供器 `Order` 优先规则一致。宿主自动申请 `ext.command.arguments` 的 `OrderedTransform` 租约。回调可能因参数预览、预设列表、任务准备、重建和二次编码反复执行，必须纯计算、快速、幂等，不能在这里启动进程、访问网络或产生一次性文件。
 
 `ExtPluginCommandContext` 提供 `PluginId`、完整 `PresetJson`、已从 `插件扩展数据[PluginId]` 提取的 `PluginStateJson`、输入/输出路径、任务 ID、阶段名、`IsPreview` 和可扩展 `Properties`。参数文本中的 `<输入文件>` / `<输出文件>` 会按原有通配规则替换。宿主不会对 `Text` 自动加引号；插件必须生成合法的 FFmpeg 参数片段。
 
@@ -989,9 +1002,9 @@ _registrations.Add(host.Commands.RegisterStepProvider(
 行为点适合修改一段明确、稳定的原生逻辑。执行顺序固定为：
 
 ```text
-BeforeNative（按 Order、插件 ID、处理器 ID）
+BeforeNative（按插件全局顺序、Order、插件 ID、处理器 ID）
 → 原生实现，或唯一的 ReplaceNative
-→ AfterNative（按 Order、插件 ID、处理器 ID）
+→ AfterNative（按插件全局顺序、Order、插件 ID、处理器 ID）
 ```
 
 当前公开行为点：
@@ -1083,10 +1096,14 @@ ResourceAccess = ExtPluginResourceAccess.Exclusive
 进入终态：
   错误：ext.task.after-failed
   成功、错误或用户取消：ext.task.after-finish
+    → 释放进程和宿主临时状态
+    → 成功时发送官方 task.completed，失败时发送官方 task.failed
 ```
 
 `command.*` 和 `process.*` 会按步骤重复；参数预览、参数总览、任务重建和二次编码也可能重复生成命令。
 相应处理器必须幂等，不能在预览中执行计费、上传、删除文件等一次性副作用。
+
+Ext 终态阶段与官方 `task.completed` 是两条有固定先后的处理链，不会被插件管理器交叉重排：所有适用的 Ext `after-complete` / `after-finish` 都先执行，随后才发送官方事件。要建立严格的插件间依赖，相关插件应使用同一条处理链；官方已提供能力时仍优先使用官方 API。
 
 <a id="pipeline-stages"></a>
 
@@ -1446,6 +1463,7 @@ dotnet build .\Samples\FFmpegFreeUI.Ext.PluginApi.Sample\FFmpegFreeUI.Ext.Plugin
 4. 重新启动 FFmpegFreeUI。
 
 不要把示例或插件输出目录中的 SDK 再复制一份到 `Plugin`。
+安装后可在主页面“插件管理”核对接口类型、版本和加载状态。把新的 DLL 放入正在运行的程序后可点击“刷新”查看，但为了避免默认程序集加载上下文和官方事件订阅残留，新插件、启用/禁用以及 DLL 替换都在重启后生效。
 
 ### 17.4 调试
 
@@ -1545,7 +1563,15 @@ dotnet build .\Samples\FFmpegFreeUI.Ext.PluginApi.Sample\FFmpegFreeUI.Ext.Plugin
 
 ### 多个 `ext.task.after-finish` 插件会并发吗
 
-对同一任务不会，它们按 `Order`、插件 ID、处理器 ID 串行执行。但是一个插件异常会中止该阶段剩余插件，一个插件长时间等待也会阻塞后续插件。不同编码任务仍可能并行执行同一处理器。
+对同一任务不会。未手动设置全局顺序时，它们保持旧规则，按 `Order`、插件 ID、处理器 ID 串行执行；在“插件管理”调整后，先按列表中的插件顺序，再按处理器 `Order`、插件 ID、处理器 ID。一个插件异常会中止该阶段剩余插件，一个插件长时间等待也会阻塞后续插件。不同编码任务仍可能并行执行同一处理器。
+
+### 为什么插件开关不能立即热卸载
+
+官方插件没有统一的停止、取消订阅和释放页面协议，插件程序集也已进入默认加载上下文。强行隐藏页面并不能撤销静态事件、线程或原生资源，反而容易产生“看似禁用、实际仍在运行”的状态。因此开关只写入 `Plugin/ExtPluginManager.json`，重启后才决定是否加载；处理顺序不需要卸载程序集，会立即用于下一次事件或阶段调用。
+
+### 官方 `task.completed` 与 Ext 完成阶段能混合排序吗
+
+不能。Ext 的 `ext.task.after-complete`、终态 `ext.task.after-finish` 和清理先执行，之后才发送官方 `task.completed`。插件管理器只在各自处理链内部排序。需要严格先后关系的插件应选择同一条链；官方回调若自行启动后台任务后立即返回，宿主也无法把该后台任务纳入顺序等待。
 
 ### 修改 `TaskStatus` 能改变任务结果吗
 

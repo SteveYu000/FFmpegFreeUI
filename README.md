@@ -27,7 +27,13 @@ Ext Plugin API v2 补充官方插件 API 尚未提供的能力，主要包括：
 
 ### 运行时组件
 
-Ext Plugin API v2 是可选组件。只有程序根目录同时存在 `FFmpegFreeUI.Ext.PluginHost.dll` 和 `FFmpegFreeUI.Ext.PluginSdk.dll` 时才会启用。缺少 SDK 时，FFmpegFreeUI 会在加载程序集前静默跳过依赖它的插件；主程序以及不依赖 SDK 的官方 `Entry` 插件仍可正常运行。
+Ext Plugin API v2 是可选组件。只有程序根目录同时存在 `FFmpegFreeUI.Ext.PluginHost.dll` 和 `FFmpegFreeUI.Ext.PluginSdk.dll` 时才会启用。缺少 SDK 时，FFmpegFreeUI 不会执行依赖它的插件，并会在“插件管理”页显示原因；主程序以及不依赖 SDK 的官方 `Entry` 插件仍可正常运行。
+
+### 插件管理与处理顺序
+
+主页面的“插件管理”可查看 `Plugin` 目录中的全部 `*.3fui.dll`、启用状态、官方/Ext/双接口类型、插件与程序集版本、Ext SDK 程序集引用版本、推断的最低 Ext API 版本及加载错误。拖动列表或使用上移/下移即可设置插件优先级；同一官方队列事件及同一 Ext 处理阶段按列表从上到下串行进入插件，顺序修改对下一次调用立即生效。
+
+由于官方插件没有统一的卸载协议，且程序集加载后不能从默认加载上下文安全移除，启用/禁用及新放入的 DLL 统一在重启后生效。配置保存在 `Plugin/ExtPluginManager.json`。从未设置过全局顺序时，Ext 处理器仍优先使用其原有 `Order`，以兼容旧插件；开发者手动排序后，列表优先级高于插件内部的 `Order`。
 
 ### 开发文档与示例
 
@@ -37,7 +43,7 @@ Ext Plugin API v2 是可选组件。只有程序根目录同时存在 `FFmpegFre
 
 SDK 已发布到 [NuGet.org](https://www.nuget.org/packages/FFmpegFreeUI.Ext.PluginSdk)，独立插件推荐直接使用 `PackageReference`；源码引用和 DLL + XML 文档引用继续用于 SDK 联调与离线开发。`ExtDeployFFmpegFreeUIPlugin` MSBuild 目标可用一条命令完成插件还原、编译与依赖部署，具体配置见开发指南第 2、3、17 节。
 
-从源码构建主程序时请使用 `git clone --recurse-submodules`。官方 v6.1.39 使用了尚未发布到 NuGet 的 LakeUI 接口，本仓库通过固定提交的 `LakeUI` 子模块提供可复现构建；已有克隆执行 `git submodule update --init --recursive` 即可补齐。
+从源码构建主程序只需正常克隆仓库并执行 `dotnet restore`。主程序通过 NuGet 使用 `LakeUI 3.23.0`，无需再初始化 LakeUI 源码子模块。
 
 ---
 

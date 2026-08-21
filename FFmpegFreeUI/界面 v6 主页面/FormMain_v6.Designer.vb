@@ -40,6 +40,7 @@ Partial Class FormMain_v6
         Dim ModernTabPage15 As LakeUI.ModernTabListControl.ModernTabPage = New LakeUI.ModernTabListControl.ModernTabPage()
         Dim ModernTabPage16 As LakeUI.ModernTabListControl.ModernTabPage = New LakeUI.ModernTabListControl.ModernTabPage()
         Dim ModernTabPage17 As LakeUI.ModernTabListControl.ModernTabPage = New LakeUI.ModernTabListControl.ModernTabPage()
+        Dim ModernTabPage18 As LakeUI.ModernTabListControl.ModernTabPage = New LakeUI.ModernTabListControl.ModernTabPage()
         ModernTabListControl1 = New LakeUI.ModernTabListControl()
         ModernTextBox1 = New LakeUI.ModernTextBox()
         ThisIsYourWindow1 = New LakeUI.ThisIsYourWindow(components)
@@ -67,10 +68,11 @@ Partial Class FormMain_v6
         ModernTabPage11.Text = "ffplay 调试播放器"
         ModernTabPage12.Text = "性能监控"
         ModernTabPage13.Text = "集成工具"
-        ModernTabPage14.IsSeparator = True
-        ModernTabPage15.Text = "软件设置"
-        ModernTabPage16.Text = "支持者"
-        ModernTabPage17.IsSeparator = True
+        ModernTabPage14.Text = "插件管理"
+        ModernTabPage15.IsSeparator = True
+        ModernTabPage16.Text = "软件设置"
+        ModernTabPage17.Text = "支持者"
+        ModernTabPage18.IsSeparator = True
         ModernTabListControl1.Items.Add(ModernTabPage1)
         ModernTabListControl1.Items.Add(ModernTabPage2)
         ModernTabListControl1.Items.Add(ModernTabPage3)
@@ -88,6 +90,7 @@ Partial Class FormMain_v6
         ModernTabListControl1.Items.Add(ModernTabPage15)
         ModernTabListControl1.Items.Add(ModernTabPage16)
         ModernTabListControl1.Items.Add(ModernTabPage17)
+        ModernTabListControl1.Items.Add(ModernTabPage18)
         ModernTabListControl1.Location = New Point(0, 0)
         ModernTabListControl1.Name = "ModernTabListControl1"
         ModernTabListControl1.ScrollBarThumbColor = Color.FromArgb(CByte(40), CByte(200), CByte(200), CByte(200))

@@ -39,9 +39,11 @@ Public Class FormMain_v6
         绑定选项卡(Form_v6_性能监控.ModernPanel1)
         Me.ModernTabListControl1.Items(12).BoundControl = Form_v6_集成工具
         绑定选项卡(Form_v6_集成工具.ModernPanel1)
-        Me.ModernTabListControl1.Items(14).BoundControl = Form_v6_设置
+        Me.ModernTabListControl1.Items(13).BoundControl = Form_v6_插件管理
+        绑定选项卡(Form_v6_插件管理.ModernPanel1)
+        Me.ModernTabListControl1.Items(15).BoundControl = Form_v6_设置
         绑定选项卡(Form_v6_设置.ModernPanel1)
-        Me.ModernTabListControl1.Items(15).BoundControl = Form_v6_支持者
+        Me.ModernTabListControl1.Items(16).BoundControl = Form_v6_支持者
         绑定选项卡(Form_v6_支持者.ModernPanel1)
 
         Select Case 设置_v6.实例对象.窗口样式
@@ -138,7 +140,7 @@ Public Class FormMain_v6
         For i = 0 To ModernTabListControl1.Items.Count - 1
             Dim item = ModernTabListControl1.Items(i)
             If 已到插件区域 AndAlso item.IsSeparator Then Return i
-            If String.Equals(item.Text, "集成的工具", StringComparison.CurrentCultureIgnoreCase) Then 已到插件区域 = True
+            If String.Equals(item.Text, "集成工具", StringComparison.CurrentCultureIgnoreCase) Then 已到插件区域 = True
         Next
 
         Return ModernTabListControl1.Items.Count

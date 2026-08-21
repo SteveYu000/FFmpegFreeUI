@@ -47,6 +47,7 @@ Friend Module Ext插件扩展宿主_v2
             If pluginId = "" Then Throw New InvalidOperationException($"{pluginType.FullName} 的插件 ID 为空")
             If 插件实例表.ContainsKey(pluginId) Then Throw New InvalidOperationException($"插件 ID {pluginId} 已被占用")
 
+            插件管理.注册Ext插件信息(pluginId, plugin.DisplayName, 程序集.Location)
             Dim host = 创建插件作用域(pluginId, plugin.DisplayName)
             Try
                 plugin.Initialize(host)
@@ -766,7 +767,8 @@ Friend Module Ext插件扩展宿主_v2
     Private Function 获取命令参数提供器() As List(Of 已注册命令参数提供器)
         SyncLock 同步锁
             Return 命令参数提供器列表.
-                OrderBy(Function(item) item.Provider.Order).
+                OrderBy(Function(item) 插件管理.获取插件处理顺序(item.PluginId)).
+                ThenBy(Function(item) item.Provider.Order).
                 ThenBy(Function(item) item.PluginId, StringComparer.OrdinalIgnoreCase).
                 ThenBy(Function(item) item.Provider.Id, StringComparer.OrdinalIgnoreCase).
                 ToList()
@@ -776,7 +778,8 @@ Friend Module Ext插件扩展宿主_v2
     Private Function 获取命令步骤提供器() As List(Of 已注册命令步骤提供器)
         SyncLock 同步锁
             Return 命令步骤提供器列表.
-                OrderBy(Function(item) item.Provider.Order).
+                OrderBy(Function(item) 插件管理.获取插件处理顺序(item.PluginId)).
+                ThenBy(Function(item) item.Provider.Order).
                 ThenBy(Function(item) item.PluginId, StringComparer.OrdinalIgnoreCase).
                 ThenBy(Function(item) item.Provider.Id, StringComparer.OrdinalIgnoreCase).
                 ToList()
@@ -944,6 +947,7 @@ Friend Module Ext插件扩展宿主_v2
             Return 行为处理器列表.
                 Where(Function(x) String.Equals(x.Handler.BehaviorId, behaviorId, StringComparison.OrdinalIgnoreCase)).
                 OrderBy(Function(x) x.Handler.Phase).
+                ThenBy(Function(x) 插件管理.获取插件处理顺序(x.PluginId)).
                 ThenBy(Function(x) x.Handler.Order).
                 ThenBy(Function(x) x.PluginId, StringComparer.OrdinalIgnoreCase).
                 ThenBy(Function(x) x.Handler.Id, StringComparer.OrdinalIgnoreCase).
@@ -1036,7 +1040,8 @@ Friend Module Ext插件扩展宿主_v2
         SyncLock 同步锁
             Return 处理器列表.
                 Where(Function(x) String.Equals(x.Handler.StageId, stageId, StringComparison.OrdinalIgnoreCase)).
-                OrderBy(Function(x) x.Handler.Order).
+                OrderBy(Function(x) 插件管理.获取插件处理顺序(x.PluginId)).
+                ThenBy(Function(x) x.Handler.Order).
                 ThenBy(Function(x) x.PluginId, StringComparer.OrdinalIgnoreCase).
                 ThenBy(Function(x) x.Handler.Id, StringComparer.OrdinalIgnoreCase).
                 ToList()
