@@ -2,7 +2,7 @@
 
 仓库标识：`FFmpegFreeUI-API-Extended-Edition`
 
-当前版本：`v6.1.30-ext.2+v2.3`（官方基线 `v6.1.30`、扩展修订 `ext.2`、Ext API `v2.3`）
+当前版本：`v6.1.39-ext.1+v2.3`（官方基线 `v6.1.39`、扩展修订 `ext.1`、Ext API `v2.3`）
 
 版本规则：`v{官方版本号}-ext.{扩展修订号}+v{Ext API 主版本.次版本}`。
 
@@ -36,6 +36,8 @@ Ext Plugin API v2 是可选组件。只有程序根目录同时存在 `FFmpegFre
 仓库同时提供 [C# v2.3 综合示例](Samples/FFmpegFreeUI.Ext.PluginApi.Sample) 和 [VB.NET v2.2 兼容基线示例](Samples/FFmpegFreeUI.Ext.PluginApi.VbVmafSample)。C# 示例覆盖动态参数控件、页面插入、声明式参数和自定义命令步骤；两者分别以 SHA-256 与 VMAF 展示成功后处理。
 
 SDK 已发布到 [NuGet.org](https://www.nuget.org/packages/FFmpegFreeUI.Ext.PluginSdk)，独立插件推荐直接使用 `PackageReference`；源码引用和 DLL + XML 文档引用继续用于 SDK 联调与离线开发。`ExtDeployFFmpegFreeUIPlugin` MSBuild 目标可用一条命令完成插件还原、编译与依赖部署，具体配置见开发指南第 2、3、17 节。
+
+从源码构建主程序时请使用 `git clone --recurse-submodules`。官方 v6.1.39 使用了尚未发布到 NuGet 的 LakeUI 接口，本仓库通过固定提交的 `LakeUI` 子模块提供可复现构建；已有克隆执行 `git submodule update --init --recursive` 即可补齐。
 
 ---
 

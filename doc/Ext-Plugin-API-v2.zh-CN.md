@@ -168,11 +168,19 @@ dotnet --list-sdks
 在完整源码仓库中首次构建：
 
 ```powershell
-git clone https://github.com/SteveYu000/FFmpegFreeUI-API-Extended-Edition.git
+git clone --recurse-submodules https://github.com/SteveYu000/FFmpegFreeUI-API-Extended-Edition.git
 cd .\FFmpegFreeUI-API-Extended-Edition
 dotnet restore .\FFmpegFreeUI-API-Extended-Edition.sln
 dotnet build .\FFmpegFreeUI-API-Extended-Edition.sln -c Debug --no-restore
 ```
+
+如果仓库已经克隆但缺少 `LakeUI` 目录，先执行：
+
+```powershell
+git submodule update --init --recursive
+```
+
+主程序使用固定提交的 LakeUI 源码，是因为官方 v6.1.39 所需的部分界面接口尚未进入 NuGet 稳定包。只开发独立 Ext 插件时无需直接引用或调用 LakeUI。
 
 ### 2.2 SDK 引用与编辑器提示
 

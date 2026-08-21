@@ -1,0 +1,3 @@
+[submodule "LakeUI"]
+	path = LakeUI
+	url = https://github.com/Lake1059/LakeUI.git
