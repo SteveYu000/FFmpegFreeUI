@@ -219,7 +219,7 @@ Partial Class Form_v6_起始页面
         MB_检查更新.SubTextForeColor = Color.DeepSkyBlue
         MB_检查更新.TabIndex = 28
         MB_检查更新.Text = "检查更新"
-        MB_检查更新.TextAlign = LakeUI.ModernButton.TextAlignEnum.Left
+        MB_检查更新.TextAlign = LakeUI.ModernButton.TextAlignEnum.Center
         '
         ' MB_3FP极简本地播放器
         '

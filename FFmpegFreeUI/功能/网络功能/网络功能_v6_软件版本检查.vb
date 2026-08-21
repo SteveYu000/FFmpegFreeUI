@@ -32,12 +32,15 @@ Friend NotInheritable Class 网络功能_v6_软件版本检查
 
     Friend Shared Async Sub 启动时检查新版本()
         Try
+            Form_v6_起始页面.显示正在检查更新()
             Dim 检查结果 As 版本检查结果 = Await 获取或开始版本检查Async()
-            If Not 检查结果.检查成功 OrElse Not 检查结果.有新版本 Then Exit Sub
             If FormMain_v6.IsDisposed OrElse FormMain_v6.Disposing OrElse Not FormMain_v6.Visible Then Exit Sub
-            显示发现新版本提示(检查结果)
+            Form_v6_起始页面.显示版本检查结果(检查结果)
         Catch ex As Exception
             Debug.WriteLine($"检查新版本失败：{网络功能_v6_通用.获取异常消息(ex)}")
+            If Not FormMain_v6.IsDisposed AndAlso Not FormMain_v6.Disposing AndAlso FormMain_v6.Visible Then
+                Form_v6_起始页面.显示版本检查结果(Nothing)
+            End If
         End Try
     End Sub
 

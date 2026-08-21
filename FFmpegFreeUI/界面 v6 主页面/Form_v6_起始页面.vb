@@ -12,37 +12,44 @@ Public Class Form_v6_起始页面
         Me.MP_新闻列表.Width = a
     End Sub
 
-    Private Async Sub MB_检查更新_Click(sender As Object, e As EventArgs) Handles MB_检查更新.Click
+    Friend Sub 显示正在检查更新()
         MB_检查更新.Enabled = False
         MB_检查更新.Text = "正在检查更新"
         MB_检查更新.SubText = "正在连接 GitHub…"
         MB_检查更新.SubTextForeColor = Color.DeepSkyBlue
+    End Sub
 
-        Try
-            Dim 检查结果 = Await 网络功能_v6_软件版本检查.手动检查新版本Async()
-
-            If Not 检查结果.检查成功 Then
-                MB_检查更新.Text = "检查更新"
-                MB_检查更新.SubText = "检查失败，点击重试"
-                MB_检查更新.SubTextForeColor = Color.Orange
-            ElseIf String.IsNullOrWhiteSpace(检查结果.最新版本号) Then
-                MB_检查更新.Text = "暂无可用更新"
-                MB_检查更新.SubText = $"当前版本 {检查结果.当前版本号}"
-                MB_检查更新.SubTextForeColor = Color.Silver
-            ElseIf 检查结果.有新版本 Then
-                MB_检查更新.Text = "发现新版本"
-                MB_检查更新.SubText = $"最新版本 {检查结果.最新版本号}"
-                MB_检查更新.SubTextForeColor = Color.LimeGreen
-            Else
-                MB_检查更新.Text = "已是最新版本"
-                MB_检查更新.SubText = $"当前版本 {检查结果.当前版本号}"
-                MB_检查更新.SubTextForeColor = Color.Silver
-            End If
-        Catch ex As Exception
-            Debug.WriteLine($"手动检查新版本失败：{ex.Message}")
+    Friend Sub 显示版本检查结果(检查结果 As 网络功能_v6_软件版本检查.版本检查结果)
+        If 检查结果 Is Nothing OrElse Not 检查结果.检查成功 Then
             MB_检查更新.Text = "检查更新"
             MB_检查更新.SubText = "检查失败，点击重试"
             MB_检查更新.SubTextForeColor = Color.Orange
+        ElseIf String.IsNullOrWhiteSpace(检查结果.最新版本号) Then
+            MB_检查更新.Text = "暂无可用更新"
+            MB_检查更新.SubText = $"当前版本 {检查结果.当前版本号}"
+            MB_检查更新.SubTextForeColor = Color.Silver
+        ElseIf 检查结果.有新版本 Then
+            MB_检查更新.Text = "发现新版本"
+            MB_检查更新.SubText = $"最新版本 {检查结果.最新版本号}"
+            MB_检查更新.SubTextForeColor = Color.LimeGreen
+        Else
+            MB_检查更新.Text = "已是最新版本"
+            MB_检查更新.SubText = $"当前版本 {检查结果.当前版本号}"
+            MB_检查更新.SubTextForeColor = Color.Silver
+        End If
+
+        MB_检查更新.Enabled = True
+    End Sub
+
+    Private Async Sub MB_检查更新_Click(sender As Object, e As EventArgs) Handles MB_检查更新.Click
+        显示正在检查更新()
+
+        Try
+            Dim 检查结果 = Await 网络功能_v6_软件版本检查.手动检查新版本Async()
+            显示版本检查结果(检查结果)
+        Catch ex As Exception
+            Debug.WriteLine($"手动检查新版本失败：{ex.Message}")
+            显示版本检查结果(Nothing)
         Finally
             MB_检查更新.Enabled = True
         End Try
