@@ -1,19 +1,91 @@
 # FFmpegFreeUI Ext Plugin API v2.3 插件开发指南
 
-本文面向希望扩展 FFmpegFreeUI 原生参数界面和任务处理链的插件开发者，对应当前 Ext Plugin API `2.3.0`。插件只需要面向`FFmpegFreeUI.Ext.PluginSdk.dll` 的公共类型编程，不应引用`FFmpegFreeUI.exe` 的内部类型，也不应通过反射查找 FFmpegFreeUI 的私有控件或方法。
+本文面向希望扩展 FFmpegFreeUI 原生参数界面和任务处理链的插件开发者，对应 Ext Plugin API `2.3.0`。
 
-Ext Plugin API v2.3 提供六类能力：
+> **这篇指南不需要从头看到尾。** 先看下面的接口选择表，确定插件要做什么；然后只阅读“基础必读 + 对应能力 + 构建部署”三部分。插件只应引用 `FFmpegFreeUI.Ext.PluginSdk`，不要引用宿主内部程序集或通过反射访问私有控件。
 
-- 参数面板目录：发现全部参数页和原生控件，并通过公开属性辅助器读取、修改、装饰或替换控件。
-- 安全 UI 扩展：向宿主管理的原生下拉框添加稳定选项，或在任一参数页顶部/底部插入 WinForms 控件。
-- 声明式命令：向 FFmpeg 命令的稳定位置贡献参数，或向任务计划贡献由队列托管的外部进程步骤。
-- 处理链扩展：在预设、入队、任务准备、命令生成、进程执行和任务终态阶段注册有序处理器。
-- 行为点扩展：在公开的原生联动逻辑之前、之后有序调整上下文，或独占替换一段原生行为。
-- 资源冲突协调：插件在深度修改共享 UI、逻辑、预设或命令时声明访问模式，宿主在注册阶段拒绝不兼容组合。
+## 快速目录
+
+### 首次接入
+
+- [0. 接口速览](#quick-interface-selection)
+- [1. 运行时组成与安装目录](#runtime-layout)
+- [2. 开发环境与示例](#development-environment)
+- [3. 从零创建插件项目](#create-project)
+- [4. 实现插件入口与选择官方 API](#plugin-entry)
+- [5. 宿主总入口 `IExtFFmpegFreeUIHost`](#host-interface)
+
+### 按能力选读
+
+- [6. UI：修改原生参数与增加控件](#ui-extension)
+- [7. 命令与任务：处理链和声明式命令](#pipeline-and-commands)
+- [8. 深度定制：原生行为点与 UI 替换](#behavior-extension)
+- [9. 处理链生命周期与全部阶段](#pipeline-lifecycle)
+- [10. `ExtPluginPipelineContext` 字段](#pipeline-context)
+- [11. 安全修改预设 JSON](#preset-json)
+- [12. 进度与结构化结果](#progress-and-results)
+- [13. 成功后处理示例](#post-processing)
+- [14. 取消、并发与线程安全](#concurrency)
+- [15. 冲突协调：资源声明与租约](#resource-coordination)
+- [16. 处理阶段选择速查](#stage-selection)
+
+### 构建和查阅
+
+- [17. 构建、部署与调试](#build-deploy)
+- [18. 常见问题](#faq)
+- [附录. 公共类型索引](#type-index)
+
+<a id="quick-interface-selection"></a>
+
+## 0. 接口速览
+
+### 0.1 每个 Ext 插件都要用的两个接口
+
+| 接口 | 主要成员 | 用途 | 详细说明 |
+|---|---|---|---|
+| `IExtFFmpegFreeUIPlugin` | `Id`、`DisplayName`、`Initialize(host)` | 插件入口。宿主发现插件后调用 `Initialize`，插件在这里注册所需能力。 | [第 4 节](#plugin-entry) |
+| `IExtFFmpegFreeUIHost` | `ApiVersion`、`HostVersion`、`Ui`、`ParameterPanel`、`Commands`、`Pipeline`、`Behaviors`、`Resources`、`Log` | 全部 Ext 能力的总入口。先检查 `ApiVersion`，再使用需要的注册表。 | [第 5 节](#host-interface) |
+
+### 0.2 六类能力与接口对应表
+
+| 能力 | 从 `host` 进入 | 主要接口、成员和类型 | 用途 | 详细说明 |
+|---|---|---|---|---|
+| 参数面板目录 | `host.ParameterPanel` | `IExtPluginParameterPanelCatalog.AvailablePages`、`AvailableControls`；页面/控件描述符；`ExtPluginControlAccess.TryGetValue`、`TrySetValue`、`TryGetProperty`、`TrySetProperty` | 找到原有参数页和控件，知道控件的稳定锚点、资源 ID 和默认值属性；取得真实控件后读取或修改公开属性。 | [参数面板目录与全部控件](#parameter-panel-catalog) |
+| 安全 UI 扩展 | `host.Ui` | `IExtPluginUiRegistry.AvailableAnchors`、`AvailableChoiceAnchors`、`Register`、`RegisterChoice`；`ExtPluginUiExtension`、`ExtPluginUiChoiceExtension`、两个 UI 上下文 | 在原页面增加控件、装饰或替换原控件，或者给宿主管理的下拉框增加稳定选项。 | [第 6 节](#ui-extension) |
+| 声明式命令 | `host.Commands` | `IExtPluginCommandRegistry.RegisterParameterProvider`、`RegisterStepProvider`；`ExtPluginCommandContext.Arguments`、`Steps`；参数和步骤类型 | 让插件参数同时进入预览、命令模板和实际 FFmpeg 命令；或者增加由队列统一执行的外部程序步骤。 | [声明式参数](#declarative-arguments) / [外部命令步骤](#declarative-steps) |
+| 处理链扩展 | `host.Pipeline` | `IExtPluginPipelineRegistry.AvailableStages`、`Register`；`ExtPluginPipelineHandler`、`ExtPluginPipelineContext`、`CancellationToken` | 在加载预设、入队、准备任务、生成命令、启动进程以及任务结束等时间点执行插件逻辑。 | [处理链注册](#pipeline-registration) / [全部阶段](#pipeline-stages) |
+| 行为点扩展 | `host.Behaviors` | `IExtPluginBehaviorRegistry.AvailableBehaviors`、`Register`；`ExtPluginBehaviorHandler`、`ExtPluginBehaviorPhase`、`ExtPluginBehaviorContext` | 在某一段明确的原生联动逻辑之前或之后调整数据；确有必要时完整替换该逻辑。 | [第 8 节](#behavior-extension) |
+| 资源冲突协调 | `host.Resources` | `IExtPluginResourceRegistry.AvailableResources`、`Claim`；`ExtPluginResourceClaim`；`Observe`、`OrderedTransform`、`Exclusive` | 提前声明插件要读、改还是独占某个共享资源，让宿主在加载时阻止互相打架的插件组合。 | [第 15 节](#resource-coordination) |
+
+参数面板目录只负责“找到控件”，真正取得某个界面实例中的控件仍通过 `host.Ui.Register(...)`。资源注册表也不负责实际修改，它只声明和检查访问冲突。
+
+### 0.3 按具体需求分类
+
+| 我想实现的功能 | 优先使用 | 直接阅读 |
+|---|---|---|
+| 在最左侧增加插件入口并打开独立页面 | 官方 `SetHost_AddCustomWinformPanel` / `SetHost_AddCustomWpfPanel` | [官方 API 优先与双入口插件](#official-api-first) |
+| 在原有参数页顶部或底部增加输入框、按钮或整块面板 | `host.ParameterPanel` + `host.Ui.Register` | [任意参数页增加控件](#insert-controls-on-page) |
+| 查找、读取或修改现有的视频/音频参数控件 | `host.ParameterPanel` + `host.Ui.Register` + `ExtPluginControlAccess` | [参数面板目录与全部控件](#parameter-panel-catalog)；写操作再看[资源租约](#resource-coordination) |
+| 给原生下拉框增加新选项 | `host.Ui.RegisterChoice` | [安全下拉选项](#safe-choice-extension) |
+| 保存插件控件状态，并随预设恢复 | `IExtPluginUiContext.StateJson` / `IExtPluginUiChoiceContext.StateJson` | [UI 上下文](#ui-context)和[安全修改预设 JSON](#preset-json) |
+| 给 FFmpeg 增加参数，并保证预览、模板和实际执行一致 | `host.Commands.RegisterParameterProvider` | [声明式 FFmpeg 参数](#declarative-arguments) |
+| 在编码前后运行另一个 EXE，并交给队列管理 | `host.Commands.RegisterStepProvider` | [插件自定义命令步骤](#declarative-steps) |
+| 在入队、任务准备、进程启动、完成或失败时运行代码 | `host.Pipeline.Register` | 先看[阶段选择速查](#stage-selection)，再看[处理链注册](#pipeline-registration) |
+| 修改某一段原生联动行为 | `host.Behaviors.Register` | [原生行为点](#behavior-extension) |
+| 完全替换原生控件或原生行为 | `ReplaceAnchor` / `ReplaceNative` + `Exclusive` | [深度定制](#behavior-extension)和[资源冲突协调](#resource-coordination) |
+| 编码完成后计算 VMAF、校验和或生成报告 | 优先使用 `RegisterStepProvider`，并将步骤的 `Placement` 设为 `AfterNative`；需要直接使用任务上下文时用 `ext.task.after-complete` | [命令步骤](#declarative-steps)和[成功后处理示例](#post-processing) |
+
+### 0.4 推荐阅读路线
+
+1. 所有人先读：[开发环境](#development-environment) → [创建项目](#create-project) → [插件入口](#plugin-entry) → [宿主总入口](#host-interface)。
+2. 回到上面两张表，只选择插件真正需要的能力章节，不需要把第 6～16 节全部读完。
+3. 最后读[构建、部署与调试](#build-deploy)，用示例项目或一键部署目标做第一次运行验证。
+4. 遇到类型名称时用文末的[公共类型索引](#type-index)；遇到加载或行为问题先查[常见问题](#faq)。
 
 Ext Plugin API v2 仍处于实验阶段。公开的锚点 ID、阶段 ID 和合同类型会作为兼容性契约维护；如果以后必须进行破坏性修改，应提升 API 主版本号。
 
-### Ext 命名隔离规则
+<details>
+<summary><strong>Ext 命名隔离规则（一般插件开发无需细读）</strong></summary>
 
 为避免与官方未来可能发布的插件 SDK 发生程序集、类型或事件名冲突，扩展 API 使用独立身份：
 
@@ -23,7 +95,9 @@ Ext Plugin API v2 仍处于实验阶段。公开的锚点 ID、阶段 ID 和合�
 - 稳定锚点、选项、行为、资源和阶段 ID：统一以 `ext.` 开头，例如 `ext.task.before-prepare`；
 - 官方兼容 API：`Entry`、`SetHost_*` 以及官方队列事件名保持原样；同一插件程序集可以同时提供官方入口和 Ext 入口，两个入口按各自规则加载。
 
-早期使用 `FFmpegFreeUI.PluginSdk.dll` 和无 `Ext` 前缀类型编译的扩展插件必须重新引用新 SDK 并重新编译。本项目不部署旧名称兼容垫片，因为保留旧程序集身份会重新引入未来命名冲突。
+</details>
+
+<a id="runtime-layout"></a>
 
 ## 1. 运行时组成与安装目录
 
@@ -68,6 +142,8 @@ Plugin\
 - 可选桥接：[`FFmpegFreeUI/功能/Ext插件扩展桥接_v2.vb`](../FFmpegFreeUI/功能/Ext插件扩展桥接_v2.vb)
 - 宿主实现：[`FFmpegFreeUI/功能/Ext插件扩展宿主_v2.vb`](../FFmpegFreeUI/功能/Ext插件扩展宿主_v2.vb)
 - PluginHost 项目：[`FFmpegFreeUI.Ext.PluginHost/FFmpegFreeUI.Ext.PluginHost.vbproj`](../FFmpegFreeUI.Ext.PluginHost/FFmpegFreeUI.Ext.PluginHost.vbproj)
+
+<a id="development-environment"></a>
 
 ## 2. 开发环境与示例
 
@@ -126,6 +202,8 @@ FFmpegFreeUI.Ext.PluginSdk.Deploy.targets
 - [VB.NET v2.2 兼容基线示例](../Samples/FFmpegFreeUI.Ext.PluginApi.VbVmafSample)：传统锚点、命令/进程处理和 VMAF 后处理。
 
 C# 示例覆盖 v2.3 新能力以及 6 个传统 UI 锚点、1 个安全下拉框锚点、1 个行为点和 14 个处理阶段；VB.NET 示例用于证明只使用 v2.2 合同的插件仍可在 v2.3 宿主运行。遇到文档与行为不一致时，以当前 SDK 公共合同和可编译示例为准。
+
+<a id="create-project"></a>
 
 ## 3. 从零创建插件项目
 
@@ -273,6 +351,8 @@ dotnet restore .\MyCompany.MyPlugin.csproj `
   --no-cache
 ```
 
+<a id="plugin-entry"></a>
+
 ## 4. 实现插件入口
 
 FFmpegFreeUI 会在每个 `*.3fui.dll` 中查找实现 `IExtFFmpegFreeUIPlugin` 的可实例化类型。入口必须：
@@ -284,9 +364,11 @@ FFmpegFreeUI 会在每个 `*.3fui.dll` 中查找实现 `IExtFFmpegFreeUIPlugin` 
 
 一个程序集可以包含多个入口，宿主按类型全名排序后初始化；为了发布和排错简单，通常一个程序集只提供一个入口。
 
+<a id="official-api-first"></a>
+
 ### 4.1 官方接口优先与双入口插件
 
-Ext SDK 的定位是补充官方插件接口尚未提供的能力，而不是替代官方接口。官方接口已经提供的功能应继续使用官方方式，例如：
+Ext SDK 的定位是补充官方插件接口尚未提供的能力，而不是替代官方接口。所以官方接口提供了的能力，就尽量使用官方接口，（碎碎念：这个项目就是因为官方不肯开放一些接口，逼得我自己写扩展的）例如：
 
 - 使用 `SetHost_AddCustomWinformPanel` 或 `SetHost_AddCustomWpfPanel` 注册主窗口左侧入口和独立页面；
 - 使用官方入队、媒体流选择器和队列事件回调完成已有能力；
@@ -374,7 +456,9 @@ End Class
 
 注册方法返回 `IDisposable`。宿主会跟踪这些句柄，并在插件作用域释放时按相反顺序注销；插件也可保存句柄以便主动提前注销。当前版本没有插件热重载，修改 DLL 后应完全退出并重新启动 FFmpegFreeUI。
 
-## 5. 宿主接口 `IExtFFmpegFreeUIHost`
+<a id="host-interface"></a>
+
+## 5. 宿主总入口 `IExtFFmpegFreeUIHost`
 
 | 成员 | 含义 |
 |---|---|
@@ -412,9 +496,22 @@ var commands = host.Commands;
 
 需要让用户在当前编码任务日志中看到信息时，使用管线上下文的 `ReportProgress` 或 `ReportResult`，不要只调用 `host.Log`。
 
-## 6. UI 扩展
+<a id="ui-extension"></a>
+
+## 6. UI：修改原生参数与增加控件
+
+本节包含“给现有控件加能力”和“给页面加新控件”两条路线：
+
+| 需求 | 接口 | 阅读位置 |
+|---|---|---|
+| 给原生下拉框增加一个受宿主管理的选项 | `RegisterChoice` | 6.1 |
+| 在已有稳定锚点插入、装饰或替换控件 | `Register` | 6.2～6.6 |
+| 查找任意参数页或原生控件 | `ParameterPanel` | 6.7 |
+| 在任意参数页顶部或底部增加控件 | `ParameterPanel` + `Register` | 6.8 |
 
 优先级原则：能用 `RegisterChoice` 或插入型锚点完成的功能，不要直接修改 `AnchorControl`。安全 API 由宿主维护稳定 ID、顺序、注销清理和预设回退；原始控件仅作为兼容旧插件及少数深度场景的逃生口。
+
+<a id="safe-choice-extension"></a>
 
 ### 6.1 向原生下拉框添加安全选项
 
@@ -485,6 +582,8 @@ if (host.Ui.AvailableAnchors.Contains(
 | `ParametersVideoQualityAfterGlobal` / `ext.parameters.video.quality.global.after` | 插入型；全局质量控制行之后 | 插入与质量策略配套的下拉框、输入框、按钮和说明 | 工厂返回一个新控件。 |
 | `ParametersVideoQualityBeforeAdvanced` / `ext.parameters.video.quality.advanced.before` | 插入型；比特率区域之后、进阶质量控制之前 | 插入高级参数生成器、校验按钮或摘要 | 只是视觉位置，参数仍需写入预设或命令上下文。 |
 | `ParametersVideoQualityPageBottom` / `ext.parameters.video.quality.page.bottom` | 插入型；进阶参数编辑区域之前的公开插槽 | 插入后处理开关或工具栏 | 名称是兼容性合同，不应假设它永远是滚动页面绝对末尾。 |
+
+<a id="ui-context"></a>
 
 ### 6.4 `IExtPluginUiContext` 全部成员
 
@@ -598,6 +697,8 @@ private static Control? DecorateQualityValue(IExtPluginUiContext context)
 
 如果装饰型工厂返回了控件，宿主会释放该控件并报错。
 
+<a id="parameter-panel-catalog"></a>
+
 ### 6.7 v2.3 参数面板目录与全部控件
 
 `IExtFFmpegFreeUIHost.ParameterPanel` 提供两个只读快照：
@@ -662,6 +763,8 @@ if (descriptor is not null)
 
 `ExtPluginControlAccess` 可在不引用 LakeUI 的情况下按公开属性读写：`TryGetValue` / `TrySetValue` 使用描述符所示的默认值语义，`TryGetProperty` / `TrySetProperty` 可处理 `Text`、`Checked`、`Value`、`Enabled`、`Visible` 等公共属性并执行常见类型转换。调用方必须处于控件所属 UI 线程。
 
+<a id="insert-controls-on-page"></a>
+
 ### 6.8 在任意参数页增加控件
 
 使用页面描述符的顶部或底部锚点，无需修改设计器，也无需依赖页面私有布局：
@@ -683,7 +786,18 @@ if (audioPage is not null)
 
 页面插槽内的插件控件按 `Order → PluginId → ExtensionId` 排列。控件由宿主容器持有并随页面释放；插件订阅其他对象事件时仍应在控件 `Disposed` 或扩展 `Cleanup` 中解绑。
 
-## 7. 处理链注册与执行规则
+<a id="pipeline-and-commands"></a>
+<a id="pipeline-registration"></a>
+
+## 7. 命令与任务：处理链和声明式命令
+
+这两套接口解决的问题不同：
+
+| 需求 | 接口 | 阅读位置 |
+|---|---|---|
+| 在某个生命周期阶段执行逻辑或修改上下文 | `host.Pipeline.Register` | 7.1～7.4，并结合第 9、10、16 节 |
+| 给 FFmpeg 命令增加参数 | `host.Commands.RegisterParameterProvider` | 7.5 |
+| 给编码计划增加独立外部进程 | `host.Commands.RegisterStepProvider` | 7.6 |
 
 ### 7.1 注册处理器
 
@@ -781,6 +895,8 @@ Private Shared Async Function PrepareQualityCoreAsync(
 End Function
 ```
 
+<a id="declarative-arguments"></a>
+
 ### 7.5 v2.3 声明式 FFmpeg 参数
 
 能表达为 FFmpeg 参数的扩展应使用 `IExtPluginCommandRegistry.RegisterParameterProvider`，不要再解析和拼接整段 `CommandLine`。宿主会在每次命令构建时调用同步回调，并把结果放入准确位置：
@@ -822,6 +938,8 @@ _registrations.Add(host.Commands.RegisterParameterProvider(
 
 “完全自己写”模式无法可靠猜测任意命令结构。v2.3 支持在模板中显式放置 `ExtFFmpegFreeUICommandPlaceholders` 的五个标记：`<ext:global>`、`<ext:before-input>`、`<ext:after-input>`、`<ext:before-output>`、`<ext:after-output>`。旧模板没有标记时，宿主会兼容性推断：全局/输入前参数放到开头，输入后/输出前参数优先插入 `<输出文件>` 前，输出后参数放到末尾；新模板应显式写标记以避免歧义。
 
+<a id="declarative-steps"></a>
+
 ### 7.6 v2.3 插件自定义命令步骤
 
 插件需要在编码前后运行独立程序时，应通过 `RegisterStepProvider` 声明步骤，不要在命令预览回调中直接 `Process.Start`：
@@ -856,7 +974,9 @@ _registrations.Add(host.Commands.RegisterStepProvider(
 
 步骤回调本身仍是同步、可重复的计划生成器；真正工作只由队列执行。外部工具不存在、启动失败或回调抛错都会明确使任务准备/执行失败。原来在 `ext.task.after-complete` 中自行启动子进程的插件继续可用，但那类进程不会自动进入命令模板，也不会自动经过逐步骤日志与 `process.*`；能改成声明式步骤时应优先改用步骤提供器。
 
-## 8. 原生行为点与深度定制
+<a id="behavior-extension"></a>
+
+## 8. 深度定制：原生行为点与 UI 替换
 
 行为点适合修改一段明确、稳定的原生逻辑。执行顺序固定为：
 
@@ -907,7 +1027,9 @@ ResourceAccess = ExtPluginResourceAccess.Exclusive
 
 若缺少所需行为点，可向开发者申请增加行为合同。
 
-## 9. 完整处理链
+<a id="pipeline-lifecycle"></a>
+
+## 9. 处理链生命周期与全部阶段
 
 ### 9.1 总体时序
 
@@ -958,6 +1080,8 @@ ResourceAccess = ExtPluginResourceAccess.Exclusive
 `command.*` 和 `process.*` 会按步骤重复；参数预览、参数总览、任务重建和二次编码也可能重复生成命令。
 相应处理器必须幂等，不能在预览中执行计费、上传、删除文件等一次性副作用。
 
+<a id="pipeline-stages"></a>
+
 ### 9.2 14 个阶段及其准确作用
 
 | 阶段 | 位置与同步性 | 修改后会被宿主消费的主要内容 | 典型用途和注意事项 |
@@ -978,6 +1102,8 @@ ResourceAccess = ExtPluginResourceAccess.Exclusive
 | `TaskAfterFinish` / `ext.task.after-finish` | 异步且一次性；成功、错误或取消的专用阶段之后 | `TaskStatus`、路径供读取，可 `ReportResult` | 无论终态如何都执行的最终清理点，适合释放以 `TaskId` 为键的缓存。使用不可取消令牌，不要执行无限或长时间等待。 |
 
 阶段相邻不代表所有调用构成一条只执行一次的直线。`preset.*` 围绕参数面板，`queue.*` 围绕入队，`task.*` 围绕一次实际执行，而 `command.*` / `process.*` 围绕每个步骤。
+
+<a id="pipeline-context"></a>
 
 ## 10. `ExtPluginPipelineContext` 全部字段
 
@@ -1015,6 +1141,8 @@ ResourceAccess = ExtPluginResourceAccess.Exclusive
 
 插件可以在 `Properties` 中加入自己的临时键，后面的同阶段处理器能看到，但宿主不会持久化未知键，也不保证在另一个阶段重新提供它们。跨阶段数据应放在插件拥有的预设状态，或放在以 `TaskId` 为键的插件内部线程安全缓存中，并在 `ext.task.after-finish` 清理。
 
+<a id="preset-json"></a>
+
 ## 11. 修改 `PresetJson` 的安全方式
 
 `PresetJson` 是整个 v6 预设，不属于单个插件。插件不得把它替换为只包含自己字段的新对象，也不得删除未知字段。
@@ -1047,6 +1175,8 @@ context.PresetJson = preset.ToJsonString(
 ```
 
 字段名属于当前 v6 预设格式，仍可能随宿主预设版本演进。生产插件应验证字段类型、为缺失字段提供默认值，并保留自己的状态版本号以便迁移。
+
+<a id="progress-and-results"></a>
 
 ## 12. 进度与结构化结果
 
@@ -1085,6 +1215,8 @@ context.ReportResult("bitrate.average", "1842", "平均码率", "kbps")
 宿主按“插件 ID + `key`”隔离结果。因此两个插件都上报 `quality.mean` 不会冲突；同一插件对相同 `key`再次上报会更新原结果。结果会写入当前任务日志和结果摘要，属于当前一次任务执行，任务重新运行时清空。
 
 当前上下文不提供读取其他插件结果集合的 API。插件之间如需协作，应定义明确的外部协议，不能依赖任务结果摘要作为实时通信总线。
+
+<a id="post-processing"></a>
 
 ## 13. 成功后处理示例
 
@@ -1129,6 +1261,8 @@ private static async ValueTask VerifyOutputAsync(
 
 VB.NET 中调用外部工具并解析 VMAF 的完整实现见[VB.NET 综合示例](../Samples/FFmpegFreeUI.Ext.PluginApi.VbVmafSample/VbVmafPlugin.Pipeline.vb)。
 
+<a id="concurrency"></a>
+
 ## 14. 取消、并发与线程安全
 
 ### 14.1 取消令牌
@@ -1151,7 +1285,9 @@ VB.NET 中调用外部工具并解析 VMAF 的完整实现见[VB.NET 综合示�
 
 UI 控件工厂和 UI 事件运行在宿主 UI 线程。任务/进程处理器不保证在 UI 线程；如果必须更新插件控件，应使用该控件的 `InvokeRequired` / `BeginInvoke` 切回创建线程。不要在 UI 事件中同步等待异步任务。
 
-## 15. 多插件冲突与资源租约
+<a id="resource-coordination"></a>
+
+## 15. 冲突协调：资源声明与租约
 
 `IExtPluginResourceRegistry` 在注册阶段协调同一宿主资源的访问。三种访问模式如下：
 
@@ -1189,7 +1325,9 @@ _registrations.Add(host.Resources.Claim(new ExtPluginResourceClaim(
 
 插件与 FFmpegFreeUI 在同一进程、同一用户权限下运行，不是安全沙箱。只安装可信插件；插件崩溃、死锁或修改共享文件都有可能影响宿主。
 
-## 16. 选择阶段的快速规则
+<a id="stage-selection"></a>
+
+## 16. 处理阶段选择速查
 
 - 只保存 UI 设置：使用 `StateJson`，通常不需要处理器。
 - 加载旧预设前迁移字段：`ext.preset.before-apply`。
@@ -1207,7 +1345,9 @@ _registrations.Add(host.Resources.Claim(new ExtPluginResourceClaim(
 - 只处理错误任务：`ext.task.after-failed`。
 - 无论成功、错误还是取消都释放任务缓存：`ext.task.after-finish`。
 
-## 17. 构建、安装和调试
+<a id="build-deploy"></a>
+
+## 17. 构建、部署与调试
 
 ### 17.1 构建
 
@@ -1321,6 +1461,8 @@ dotnet build .\Samples\FFmpegFreeUI.Ext.PluginApi.Sample\FFmpegFreeUI.Ext.Plugin
 - 临时文件和隐私策略；
 - 插件以及第三方库各自适用的许可证。
 
+<a id="faq"></a>
+
 ## 18. 常见问题
 
 ### 插件完全没有加载
@@ -1409,44 +1551,48 @@ dotnet build .\Samples\FFmpegFreeUI.Ext.PluginApi.Sample\FFmpegFreeUI.Ext.Plugin
 
 可以。任何能够生成兼容 .NET 程序集并实现 SDK 接口的语言原则上都可用。VB.NET 的主要差异是异步`ValueTask` 回调需要使用本指南中的 `Task` 适配器。
 
-## 19. 公共类型速查
+<a id="type-index"></a>
 
-| 类型 | 用途 |
-|---|---|
-| `IExtFFmpegFreeUIPlugin` | 插件入口：`Id`、`DisplayName`、`Initialize`。 |
-| `IExtFFmpegFreeUIHost` | 版本、日志、UI、处理链、行为点、资源、参数面板和命令注册表。 |
-| `IExtPluginParameterPanelCatalog` | 当前全部参数页面和原生控件描述符。 |
-| `ExtPluginParameterPageDescriptor` / `ExtPluginParameterControlDescriptor` | 页面插槽、控件锚点、类型、默认值属性和资源 ID。 |
-| `ExtPluginControlAccess` | 不依赖 LakeUI 的公共控件属性读写辅助器。 |
-| `ExtPluginLogLevel` | `Trace`、`Information`、`Warning`、`Error`。 |
-| `IExtPluginUiRegistry` | `AvailableAnchors`、`AvailableChoiceAnchors`、`Register`、`RegisterChoice`。 |
-| `ExtPluginUiExtension` | 普通/替换 UI 扩展、锚点、顺序、控件工厂和资源声明。 |
-| `ExtPluginUiChoiceExtension` | 稳定下拉项、原生回退、字段覆盖、禁用目标和状态回调。 |
-| `IExtPluginUiChoiceContext` | 安全选项身份、选择状态、插件状态和刷新。 |
-| `IExtPluginUiContext` | UI 身份、原生控件、插入容器、状态持久化和刷新。 |
-| `IExtPluginBehaviorRegistry` | 可用行为点和行为处理器注册。 |
-| `ExtPluginBehaviorHandler` | `BeforeNative`、`AfterNative` 或独占 `ReplaceNative`。 |
-| `ExtPluginBehaviorContext` | 行为点的稳定键值上下文。 |
-| `IExtPluginResourceRegistry` | 共享资源声明和冲突检查。 |
-| `ExtPluginResourceClaim` | 资源 ID、访问模式和用途说明。 |
-| `IExtPluginPipelineRegistry` | `AvailableStages`、`Register`。 |
-| `IExtPluginCommandRegistry` | 注册声明式 FFmpeg 参数提供器和外部命令步骤提供器。 |
-| `ExtPluginCommandContext` | 预设、插件状态、路径、阶段、预览标记以及参数/步骤输出集合。 |
-| `ExtPluginCommandArgument` / `ExtPluginCommandArgumentPosition` | FFmpeg 参数片段及五个稳定插入位置。 |
-| `ExtPluginCommandStep` / `ExtPluginCommandStepPlacement` | 队列托管的前置/后置外部进程步骤。 |
-| `ExtFFmpegFreeUICommandPlaceholders` | “完全自己写”模板中的五个可选声明式参数插槽。 |
-| `ExtPluginPipelineHandler` | 处理器 ID、阶段、顺序和回调。 |
-| `ExtPluginPipelineCallback` | 返回 `ValueTask` 的处理器委托。 |
-| `ExtPluginPipelineContext` | 预设、路径、命令、进程、任务、属性、进度和结果。 |
-| `ExtPluginPipelineProgress` | 宿主内部传递进度消息和比例的记录类型。 |
-| `ExtPluginTaskResult` | 宿主内部传递结构化结果的记录类型。 |
-| `ExtPluginTaskStatus` | `Unknown`、`Pending`、`Running`、`Paused`、`Succeeded`、`Failed`、`Canceled`。 |
-| `ExtFFmpegFreeUIPluginApi` | 当前 SDK 声明版本 `Version`。 |
-| `ExtFFmpegFreeUIUiAnchors` | 6 个 v2.2 兼容 UI 锚点和 `All` 集合。 |
-| `ExtFFmpegFreeUIParameterPanelIds` | v2.3 页面、控件锚点和动态资源 ID 规则。 |
-| `ExtFFmpegFreeUIUiChoiceAnchors` / `ExtFFmpegFreeUIUiChoices` | 可安全扩展的下拉框和原生选项稳定 ID。 |
-| `ExtFFmpegFreeUIBehaviors` | 可组合或独占替换的原生行为点。 |
-| `ExtFFmpegFreeUIPluginResources` | 可进行冲突协调的共享资源。 |
-| `ExtFFmpegFreeUIPipelineStages` | 14 个稳定处理阶段和 `All` 集合。 |
+## 附录. 公共类型索引
+
+不知道某个类型属于哪项能力时，可以在下表中查找，再跳到对应正文。编辑器中的 XML 文档负责成员级提示，这里只说明类型在整体结构中的位置。
+
+| 分类 | 类型 | 核心用途 | 详细说明 |
+|---|---|---|---|
+| 入口与宿主 | `IExtFFmpegFreeUIPlugin` | 插件入口：`Id`、`DisplayName`、`Initialize`。 | [第 4 节](#plugin-entry) |
+| 入口与宿主 | `IExtFFmpegFreeUIHost` | 版本、日志以及六类能力注册表的总入口。 | [第 5 节](#host-interface) |
+| 入口与宿主 | `ExtPluginLogLevel` | `Trace`、`Information`、`Warning`、`Error`。 | [第 5 节](#host-interface) |
+| 入口与宿主 | `ExtFFmpegFreeUIPluginApi` | 当前 SDK 声明的 API `Version`。 | [第 5 节](#host-interface) |
+| 参数与 UI | `IExtPluginParameterPanelCatalog` | 枚举当前全部参数页和原生控件描述符。 | [参数面板目录](#parameter-panel-catalog) |
+| 参数与 UI | `ExtPluginParameterPageDescriptor` / `ExtPluginParameterControlDescriptor` | 页面插槽、控件锚点、类型、默认值属性和资源 ID。 | [参数面板目录](#parameter-panel-catalog) |
+| 参数与 UI | `ExtPluginControlAccess` | 不依赖 LakeUI，按公开属性读取或修改控件。 | [参数面板目录](#parameter-panel-catalog) |
+| 参数与 UI | `IExtPluginUiRegistry` | 查询锚点并注册普通 UI 或安全下拉选项。 | [第 6 节](#ui-extension) |
+| 参数与 UI | `ExtPluginUiExtension` / `ExtPluginUiExtensionMode` | 插入、装饰或替换 UI；定义锚点、顺序、工厂、清理和资源声明。 | [普通 UI 扩展](#ui-extension) |
+| 参数与 UI | `IExtPluginUiContext` | 当前 UI 实例、原生控件、插入容器、`StateJson` 和刷新。 | [UI 上下文](#ui-context) |
+| 参数与 UI | `ExtPluginUiChoiceExtension` / `IExtPluginUiChoiceContext` | 稳定下拉项、原生回退、选中状态、字段覆盖和持久化。 | [安全下拉选项](#safe-choice-extension) |
+| 参数与 UI | `ExtFFmpegFreeUIUiAnchors` | 6 个 v2.2 兼容 UI 锚点和 `All` 集合。 | [传统 UI 锚点](#ui-extension) |
+| 参数与 UI | `ExtFFmpegFreeUIParameterPanelIds` | v2.3 页面插槽、控件锚点和动态资源 ID 规则。 | [参数面板目录](#parameter-panel-catalog) |
+| 参数与 UI | `ExtFFmpegFreeUIUiChoiceAnchors` / `ExtFFmpegFreeUIUiChoices` | 可安全扩展的下拉框与原生选项稳定 ID。 | [安全下拉选项](#safe-choice-extension) |
+| 声明式命令 | `IExtPluginCommandRegistry` | 注册 FFmpeg 参数提供器和外部命令步骤提供器。 | [第 7 节](#pipeline-and-commands) |
+| 声明式命令 | `ExtPluginCommandParameterCallback` / `ExtPluginCommandStepCallback` | 参数或步骤提供器使用的同步、可重复调用回调。 | [参数](#declarative-arguments) / [步骤](#declarative-steps) |
+| 声明式命令 | `ExtPluginCommandParameterProvider` / `ExtPluginCommandStepProvider` | 定义提供器 ID、顺序以及可重复调用的计划生成回调。 | [参数](#declarative-arguments) / [步骤](#declarative-steps) |
+| 声明式命令 | `ExtPluginCommandContext` | 提供预设、插件状态、路径、阶段、预览标记及参数/步骤输出集合。 | [声明式参数](#declarative-arguments) |
+| 声明式命令 | `ExtPluginCommandArgument` / `ExtPluginCommandArgumentPosition` | FFmpeg 参数片段及五个稳定插入位置。 | [声明式参数](#declarative-arguments) |
+| 声明式命令 | `ExtPluginCommandStep` / `ExtPluginCommandStepPlacement` | 队列托管的前置或后置外部进程步骤。 | [外部命令步骤](#declarative-steps) |
+| 声明式命令 | `ExtFFmpegFreeUICommandPlaceholders` | “完全自己写”模板中的五个声明式参数插槽。 | [声明式参数](#declarative-arguments) |
+| 处理链 | `IExtPluginPipelineRegistry` | 查询可用阶段并注册处理器。 | [处理链注册](#pipeline-registration) |
+| 处理链 | `ExtPluginPipelineHandler` / `ExtPluginPipelineCallback` | 处理器 ID、阶段、顺序、资源声明和返回 `ValueTask` 的回调。 | [处理链注册](#pipeline-registration) |
+| 处理链 | `ExtPluginPipelineContext` | 预设、路径、命令、进程、任务、属性、进度和结果。 | [上下文字段](#pipeline-context) |
+| 处理链 | `ExtPluginPipelineProgress` / `ExtPluginTaskResult` | 向任务日志报告进度与结构化结果。 | [进度与结果](#progress-and-results) |
+| 处理链 | `ExtPluginTaskStatus` | `Unknown`、`Pending`、`Running`、`Paused`、`Succeeded`、`Failed`、`Canceled`。 | [上下文字段](#pipeline-context) |
+| 处理链 | `ExtFFmpegFreeUIPipelineStages` | 14 个稳定处理阶段和 `All` 集合。 | [全部阶段](#pipeline-stages) |
+| 行为与冲突 | `IExtPluginBehaviorRegistry` | 查询行为点并注册原生逻辑前置、后置或替换处理器。 | [第 8 节](#behavior-extension) |
+| 行为与冲突 | `ExtPluginBehaviorCallback` | 接收 `ExtPluginBehaviorContext` 的同步行为回调。 | [第 8 节](#behavior-extension) |
+| 行为与冲突 | `ExtPluginBehaviorHandler` / `ExtPluginBehaviorPhase` | `BeforeNative`、`AfterNative` 或独占 `ReplaceNative`。 | [第 8 节](#behavior-extension) |
+| 行为与冲突 | `ExtPluginBehaviorContext` | 行为点定义的稳定键值上下文。 | [第 8 节](#behavior-extension) |
+| 行为与冲突 | `IExtPluginResourceRegistry` | 查询共享资源并声明访问方式。 | [第 15 节](#resource-coordination) |
+| 行为与冲突 | `ExtPluginResourceClaim` / `ExtPluginResourceAccess` | 资源 ID、用途以及 `Observe`、`OrderedTransform`、`Exclusive` 访问模式。 | [第 15 节](#resource-coordination) |
+| 行为与冲突 | `ExtFFmpegFreeUIBehaviors` | 可组合或独占替换的原生行为点 ID。 | [第 8 节](#behavior-extension) |
+| 行为与冲突 | `ExtFFmpegFreeUIPluginResources` | 可进行冲突协调的共享资源 ID。 | [第 15 节](#resource-coordination) |
 
 建议先编译并运行仓库中的 C# 或 VB.NET 综合示例，再从最接近自己用途的 UI 扩展和处理阶段逐步删减，这样最容易保持正确的生命周期、取消和并发行为。
