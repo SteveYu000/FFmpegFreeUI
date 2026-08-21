@@ -14,10 +14,9 @@ Public Class Form_v6_插件管理
     Private WithEvents MB_打开目录 As New ModernButton()
     Private WithEvents MB_重启应用 As New ModernButton()
     Private WithEvents MB_空状态打开目录 As New ModernButton()
-    Private ReadOnly P_空状态 As New Panel()
-    Private ReadOnly L_插件统计 As New Label()
-    Private ReadOnly L_启用统计 As New Label()
-    Private ReadOnly L_待重启统计 As New Label()
+    Private ReadOnly P_空状态 As New ModernPanel()
+    Private ReadOnly HCL_页面标题 As New HtmlColorLabel()
+    Private ReadOnly HCL_概览 As New HtmlColorLabel()
     Private ReadOnly L_详情状态 As New Label()
     Private ReadOnly L_详情名称 As New Label()
     Private ReadOnly L_详情文件 As New Label()
@@ -31,7 +30,7 @@ Public Class Form_v6_插件管理
     Private ReadOnly L_详情路径 As New Label()
     Private ReadOnly L_详情消息标题 As New Label()
     Private ReadOnly L_详情消息 As New Label()
-    Private ReadOnly L_说明 As New Label()
+    Private ReadOnly HCL_说明 As New HtmlColorLabel()
     Private ReadOnly 快照 As New Dictionary(Of String, 插件信息_v6)(StringComparer.OrdinalIgnoreCase)
     Private 正在填充列表 As Boolean
     Private 忽略管理器通知 As Boolean
@@ -49,238 +48,172 @@ Public Class Form_v6_插件管理
 
     Private Sub 初始化界面()
         SuspendLayout()
+        AutoScaleDimensions = New SizeF(96.0F, 96.0F)
+        AutoScaleMode = AutoScaleMode.Dpi
         BackColor = Color.FromArgb(24, 24, 24)
         ClientSize = New Size(980, 680)
+        Font = New Font("Microsoft YaHei UI", 10.0F)
+        ForeColor = Color.Silver
         FormBorderStyle = FormBorderStyle.None
-        MinimumSize = New Size(860, 560)
+        MinimumSize = New Size(900, 580)
         Name = NameOf(Form_v6_插件管理)
         Text = "插件管理"
 
-        ModernPanel1.BackColor1 = Color.FromArgb(24, 24, 24)
+        ModernPanel1.BackColor = Color.Transparent
+        ModernPanel1.BackColor1 = Color.Transparent
         ModernPanel1.BorderSize = 0
         ModernPanel1.Dock = DockStyle.Fill
         ModernPanel1.Name = "ModernPanel1"
         ModernPanel1.Padding = New Padding(20)
+        HCL_页面标题.AutoSize = True
+        HCL_页面标题.AutoSizeMode = AutoSizeMode.GrowAndShrink
+        HCL_页面标题.Dock = DockStyle.Top
+        HCL_页面标题.ForeColor = Color.FromArgb(120, 255, 255, 255)
+        HCL_页面标题.Text = "<span style=""font-size:13; color:Silver"">插件管理</span>   查看插件状态、接口兼容性和事件处理顺序"
+        HCL_页面标题.TextAlign = HtmlColorLabel.TextAlignEnum.MiddleLeft
 
-        Dim layout As New TableLayoutPanel With {
-            .BackColor = Color.Transparent,
-            .ColumnCount = 1,
-            .Dock = DockStyle.Fill,
-            .RowCount = 5
-        }
-        layout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100.0F))
-        layout.RowStyles.Add(New RowStyle(SizeType.Absolute, 116.0F))
-        layout.RowStyles.Add(New RowStyle(SizeType.Absolute, 14.0F))
-        layout.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0F))
-        layout.RowStyles.Add(New RowStyle(SizeType.Absolute, 14.0F))
-        layout.RowStyles.Add(New RowStyle(SizeType.Absolute, 42.0F))
+        Dim toolbar = 创建工具栏()
+        Dim contentLayout = 创建内容布局()
 
-        Dim headerCard = 创建卡片()
-        headerCard.Padding = New Padding(22, 16, 18, 16)
-        Dim headerLayout As New TableLayoutPanel With {
-            .BackColor = Color.Transparent,
-            .ColumnCount = 2,
-            .Dock = DockStyle.Fill,
-            .RowCount = 1
-        }
-        headerLayout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 56.0F))
-        headerLayout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 44.0F))
-        headerLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0F))
+        HCL_说明.AutoSize = True
+        HCL_说明.AutoSizeMode = AutoSizeMode.GrowAndShrink
+        HCL_说明.Dock = DockStyle.Bottom
+        HCL_说明.ForeColor = Color.FromArgb(120, 255, 255, 255)
+        HCL_说明.Padding = New Padding(0, 10, 0, 0)
+        HCL_说明.Text = "同一事件按列表从上到下依次处理；拖动或上移/下移立即生效，安装、替换、启用或停用插件需要重启应用。"
+        HCL_说明.TextAlign = HtmlColorLabel.TextAlignEnum.MiddleLeft
 
-        Dim titleLayout As New TableLayoutPanel With {
+        ModernPanel1.Controls.Add(contentLayout)
+        ModernPanel1.Controls.Add(HCL_说明)
+        ModernPanel1.Controls.Add(toolbar)
+        ModernPanel1.Controls.Add(HCL_页面标题)
+        Controls.Add(ModernPanel1)
+        ResumeLayout(False)
+        PerformLayout()
+    End Sub
+
+    Private Function 创建工具栏() As Control
+        Dim toolbar As New Panel With {
             .BackColor = Color.Transparent,
-            .ColumnCount = 1,
-            .Dock = DockStyle.Fill,
-            .RowCount = 3
+            .Dock = DockStyle.Top,
+            .Height = 54,
+            .Padding = New Padding(0, 10, 0, 10)
         }
-        titleLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 38.0F))
-        titleLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 28.0F))
-        titleLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0F))
-        Dim title As New Label With {
+        Dim actions As New FlowLayoutPanel With {
+            .AutoSize = True,
+            .AutoSizeMode = AutoSizeMode.GrowAndShrink,
             .BackColor = Color.Transparent,
-            .Dock = DockStyle.Fill,
-            .Font = New Font("Microsoft YaHei UI", 17.0F, FontStyle.Regular),
-            .ForeColor = Color.FromArgb(238, 238, 238),
-            .Text = "插件管理",
-            .TextAlign = ContentAlignment.MiddleLeft
-        }
-        Dim subtitle As New Label With {
-            .BackColor = Color.Transparent,
-            .Dock = DockStyle.Fill,
-            .Font = New Font("Microsoft YaHei UI", 9.2F),
-            .ForeColor = Color.FromArgb(145, 190, 190, 190),
-            .Text = "管理插件状态、接口兼容性与事件处理顺序",
-            .TextAlign = ContentAlignment.MiddleLeft
-        }
-        Dim stats As New FlowLayoutPanel With {
-            .BackColor = Color.Transparent,
-            .Dock = DockStyle.Fill,
+            .Dock = DockStyle.Left,
             .FlowDirection = FlowDirection.LeftToRight,
-            .Padding = New Padding(0, 2, 0, 0),
+            .Margin = New Padding(0),
+            .Padding = New Padding(0),
             .WrapContents = False
         }
-        配置概览标签(L_插件统计, Color.FromArgb(210, 210, 210))
-        配置概览标签(L_启用统计, Color.FromArgb(130, 210, 155))
-        配置概览标签(L_待重启统计, Color.FromArgb(235, 180, 105))
-        stats.Controls.AddRange({L_插件统计, L_启用统计, L_待重启统计})
-        titleLayout.Controls.Add(title, 0, 0)
-        titleLayout.Controls.Add(subtitle, 0, 1)
-        titleLayout.Controls.Add(stats, 0, 2)
+        配置按钮(MB_打开目录, "打开插件目录", 130, Color.CornflowerBlue)
+        配置按钮(MB_刷新, "刷新", 70, Color.CornflowerBlue)
+        配置按钮(MB_切换启用, "启用插件", 100, Color.YellowGreen)
+        配置按钮(MB_上移, "上移", 65, Color.CornflowerBlue)
+        配置按钮(MB_下移, "下移", 65, Color.CornflowerBlue)
+        配置按钮(MB_重启应用, "重启并应用", 110, Color.Goldenrod)
+        MB_重启应用.Margin = New Padding(0)
+        actions.Controls.AddRange({MB_打开目录, MB_刷新, MB_切换启用, MB_上移, MB_下移, MB_重启应用})
 
-        Dim topActions As New FlowLayoutPanel With {
-            .BackColor = Color.Transparent,
-            .Dock = DockStyle.Fill,
-            .FlowDirection = FlowDirection.RightToLeft,
-            .Padding = New Padding(0, 24, 0, 0),
-            .WrapContents = False
-        }
-        配置按钮(MB_打开目录, "打开插件目录", 126)
-        配置按钮(MB_刷新, "刷新", 72)
-        配置按钮(MB_重启应用, "重启应用", 96, primary:=True)
-        topActions.Controls.AddRange({MB_重启应用, MB_刷新, MB_打开目录})
-        headerLayout.Controls.Add(titleLayout, 0, 0)
-        headerLayout.Controls.Add(topActions, 1, 0)
-        headerCard.Controls.Add(headerLayout)
+        HCL_概览.AutoSizeMode = AutoSizeMode.GrowAndShrink
+        HCL_概览.Dock = DockStyle.Fill
+        HCL_概览.ForeColor = Color.FromArgb(120, 255, 255, 255)
+        HCL_概览.Padding = New Padding(15, 0, 0, 0)
+        HCL_概览.Text = "0 个插件   0 个已启用   无需重启"
+        HCL_概览.TextAlign = HtmlColorLabel.TextAlignEnum.MiddleRight
 
+        toolbar.Controls.Add(HCL_概览)
+        toolbar.Controls.Add(actions)
+        Return toolbar
+    End Function
+
+    Private Function 创建内容布局() As Control
         Dim contentLayout As New TableLayoutPanel With {
             .BackColor = Color.Transparent,
             .ColumnCount = 2,
             .Dock = DockStyle.Fill,
             .RowCount = 1
         }
-        contentLayout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 67.0F))
-        contentLayout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 33.0F))
+        contentLayout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 70.0F))
+        contentLayout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 30.0F))
         contentLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0F))
 
-        Dim listCard = 创建卡片()
-        listCard.Margin = New Padding(0, 0, 7, 0)
-        listCard.Padding = New Padding(14)
-        Dim listLayout As New TableLayoutPanel With {
-            .BackColor = Color.Transparent,
-            .ColumnCount = 1,
-            .Dock = DockStyle.Fill,
-            .RowCount = 2
-        }
-        listLayout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100.0F))
-        listLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 58.0F))
-        listLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0F))
-        Dim listHeader As New TableLayoutPanel With {
-            .BackColor = Color.Transparent,
-            .ColumnCount = 2,
-            .Dock = DockStyle.Fill,
-            .RowCount = 1
-        }
-        listHeader.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100.0F))
-        listHeader.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 248.0F))
-        Dim listTitleLayout As New TableLayoutPanel With {
-            .BackColor = Color.Transparent,
-            .ColumnCount = 1,
-            .Dock = DockStyle.Fill,
-            .RowCount = 2
-        }
-        listTitleLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 30.0F))
-        listTitleLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 24.0F))
-        listTitleLayout.Controls.Add(创建文本标签("已安装插件", 12.0F, Color.FromArgb(230, 230, 230)), 0, 0)
-        listTitleLayout.Controls.Add(创建文本标签("拖动列表即可调整同一事件中的执行顺序", 8.7F, Color.FromArgb(135, 185, 185, 185)), 0, 1)
-        Dim listActions As New FlowLayoutPanel With {
+        Dim listBody As New Panel With {
             .BackColor = Color.Transparent,
             .Dock = DockStyle.Fill,
-            .FlowDirection = FlowDirection.RightToLeft,
-            .Padding = New Padding(0, 10, 0, 0),
-            .WrapContents = False
+            .Margin = New Padding(0, 0, 5, 0)
         }
-        配置按钮(MB_切换启用, "停用插件", 96, primary:=True)
-        配置按钮(MB_上移, "上移", 62)
-        配置按钮(MB_下移, "下移", 62)
-        listActions.Controls.AddRange({MB_下移, MB_上移, MB_切换启用})
-        listHeader.Controls.Add(listTitleLayout, 0, 0)
-        listHeader.Controls.Add(listActions, 1, 0)
-
-        Dim listBody As New Panel With {.BackColor = Color.Transparent, .Dock = DockStyle.Fill}
-
         UDLV_插件列表.AllowDragReorder = True
-        UDLV_插件列表.BackgroundColor = Color.FromArgb(16, 16, 16)
-        UDLV_插件列表.BorderRadius = 8
+        UDLV_插件列表.BackgroundColor = Color.FromArgb(40, 220, 220, 220)
+        UDLV_插件列表.BorderRadius = 10
         UDLV_插件列表.BorderSize = 0
         UDLV_插件列表.Dock = DockStyle.Fill
         UDLV_插件列表.DragSelectZoneWidth = 300
-        UDLV_插件列表.ForeColor = Color.FromArgb(215, 215, 215)
-        UDLV_插件列表.GroupBorderColor = Color.FromArgb(55, 55, 55)
+        UDLV_插件列表.ForeColor = Color.Silver
+        UDLV_插件列表.GroupBackColor = Color.FromArgb(36, 36, 36)
+        UDLV_插件列表.GroupBorderColor = Color.Silver
+        UDLV_插件列表.GroupForeColor = Color.Gainsboro
         UDLV_插件列表.GroupHeight = 35
-        UDLV_插件列表.HeaderBackColor = Color.FromArgb(22, 22, 22)
-        UDLV_插件列表.HeaderBorderColor = Color.FromArgb(48, 48, 48)
-        UDLV_插件列表.HeaderHeight = 42
-        UDLV_插件列表.ItemCornerRadius = 8
-        UDLV_插件列表.ItemPadding = New Padding(12, 7, 12, 7)
-        UDLV_插件列表.ItemSelectedBackColor = Color.FromArgb(38, 55, 74)
+        UDLV_插件列表.HeaderBackColor = Color.Transparent
+        UDLV_插件列表.HeaderBorderColor = Color.FromArgb(80, 220, 220, 220)
+        UDLV_插件列表.HeaderBorderWidth = 2
+        UDLV_插件列表.HeaderForeColor = Color.DarkGray
+        UDLV_插件列表.HeaderHeight = 40
+        UDLV_插件列表.ItemCornerRadius = 10
+        UDLV_插件列表.ItemPadding = New Padding(10, 6, 10, 6)
+        UDLV_插件列表.ItemSelectedBackColor = Color.FromArgb(40, 220, 220, 220)
         UDLV_插件列表.MultiSelect = False
         UDLV_插件列表.Padding = New Padding(5, 0, 5, 5)
-        UDLV_插件列表.ScrollBarThumbColor = Color.FromArgb(62, 62, 62)
-        UDLV_插件列表.ScrollBarThumbHoverColor = Color.FromArgb(92, 92, 92)
-        UDLV_插件列表.ScrollBarTrackColor = Color.FromArgb(22, 22, 22)
-        UDLV_插件列表.SelectionRectBorderColor = Color.FromArgb(82, 125, 170)
-        UDLV_插件列表.SelectionRectFillColor = Color.FromArgb(35, 70, 105)
-        添加列("顺序", 54)
-        添加列("状态", 72)
-        添加列("插件", 220)
-        添加列("接口", 100)
-        添加列("版本", 110)
-        添加列("加载状态", 132)
+        UDLV_插件列表.ScrollBarThumbColor = Color.FromArgb(40, 220, 220, 220)
+        UDLV_插件列表.ScrollBarThumbHoverColor = Color.FromArgb(120, 220, 220, 220)
+        UDLV_插件列表.ScrollBarTrackColor = Color.FromArgb(20, 220, 220, 220)
+        UDLV_插件列表.SelectionRectBorderColor = Color.FromArgb(80, 220, 220, 220)
+        UDLV_插件列表.SelectionRectFillColor = Color.FromArgb(40, 220, 220, 220)
+        添加列("顺序", 70)
+        添加列("状态", 80)
+        添加列("插件", 240)
+        添加列("接口", 115)
+        添加列("加载状态", 180)
 
         配置空状态()
         listBody.Controls.Add(UDLV_插件列表)
         listBody.Controls.Add(P_空状态)
-        listLayout.Controls.Add(listHeader, 0, 0)
-        listLayout.Controls.Add(listBody, 0, 1)
-        listCard.Controls.Add(listLayout)
 
-        Dim detailCard = 创建卡片()
-        detailCard.Margin = New Padding(7, 0, 0, 0)
-        detailCard.Padding = New Padding(18)
-        detailCard.Controls.Add(创建详情布局())
-        contentLayout.Controls.Add(listCard, 0, 0)
-        contentLayout.Controls.Add(detailCard, 1, 0)
+        Dim detailPanel As New ModernPanel With {
+            .BackColor = Color.Transparent,
+            .BackColor1 = Color.FromArgb(40, 220, 220, 220),
+            .BorderRadius = 10,
+            .BorderSize = 0,
+            .Dock = DockStyle.Fill,
+            .Margin = New Padding(5, 0, 0, 0),
+            .Padding = New Padding(20),
+            .ScrollBarMode = ModernPanel.ScrollMode.Vertical
+        }
+        detailPanel.Controls.Add(创建详情布局())
+        contentLayout.Controls.Add(listBody, 0, 0)
+        contentLayout.Controls.Add(detailPanel, 1, 0)
+        Return contentLayout
+    End Function
 
-        L_说明.AutoEllipsis = True
-        L_说明.BackColor = Color.FromArgb(31, 31, 31)
-        L_说明.Dock = DockStyle.Fill
-        L_说明.Font = New Font("Microsoft YaHei UI", 9.0F)
-        L_说明.ForeColor = Color.FromArgb(155, 205, 205, 205)
-        L_说明.Padding = New Padding(14, 0, 14, 0)
-        L_说明.Text = "处理顺序会立即用于下一次事件；安装、替换、启用或停用插件需要重启应用。"
-        L_说明.TextAlign = ContentAlignment.MiddleLeft
-
-        layout.Controls.Add(headerCard, 0, 0)
-        layout.Controls.Add(contentLayout, 0, 2)
-        layout.Controls.Add(L_说明, 0, 4)
-        ModernPanel1.Controls.Add(layout)
-        Controls.Add(ModernPanel1)
-        ResumeLayout(False)
-    End Sub
-
-    Private Shared Sub 配置按钮(button As ModernButton, text As String, width As Integer, Optional primary As Boolean = False)
-        button.BackColor1 = If(primary, Color.FromArgb(45, 69, 94), Color.FromArgb(38, 38, 38))
-        button.BorderRadius = 9
+    Private Shared Sub 配置按钮(button As ModernButton, text As String, width As Integer, foreColor As Color)
+        button.BackColor = Color.Transparent
+        button.BackColor1 = Color.FromArgb(40, 220, 220, 220)
+        button.BorderColor = Color.Transparent
+        button.BorderRadius = 10
         button.BorderSize = 0
-        button.Font = New Font("Microsoft YaHei UI", 9.0F)
-        button.ForeColor = If(primary, Color.FromArgb(205, 228, 252), Color.FromArgb(200, 210, 220))
-        button.HoverBackColor1 = If(primary, Color.FromArgb(57, 85, 114), Color.FromArgb(50, 50, 50))
-        button.Margin = New Padding(8, 0, 0, 0)
-        button.PressedBackColor1 = If(primary, Color.FromArgb(67, 97, 128), Color.FromArgb(60, 60, 60))
+        button.Font = New Font("Microsoft YaHei UI", 10.0F)
+        button.ForeColor = foreColor
+        button.HoverBackColor1 = Color.FromArgb(60, 220, 220, 220)
+        button.HoverBorderColor = Color.Transparent
+        button.Margin = New Padding(0, 0, 10, 0)
+        button.PressedBackColor1 = Color.FromArgb(80, 220, 220, 220)
+        button.PressedBorderColor = foreColor
         button.Size = New Size(width, 34)
         button.Text = text
     End Sub
-
-    Private Shared Function 创建卡片() As ModernPanel
-        Return New ModernPanel With {
-            .BackColor = Color.Transparent,
-            .BackColor1 = Color.FromArgb(14, 14, 14),
-            .BorderColor = Color.FromArgb(42, 42, 42),
-            .BorderRadius = 12,
-            .BorderSize = 1,
-            .Dock = DockStyle.Fill
-        }
-    End Function
 
     Private Shared Function 创建文本标签(text As String, fontSize As Single, color As Color) As Label
         Return New Label With {
@@ -294,18 +227,11 @@ Public Class Form_v6_插件管理
         }
     End Function
 
-    Private Shared Sub 配置概览标签(label As Label, color As Color)
-        label.AutoSize = True
-        label.BackColor = Color.FromArgb(35, 35, 35)
-        label.Font = New Font("Microsoft YaHei UI", 8.5F)
-        label.ForeColor = color
-        label.Margin = New Padding(0, 0, 8, 0)
-        label.Padding = New Padding(9, 3, 9, 3)
-        label.Text = "0"
-    End Sub
-
     Private Sub 配置空状态()
-        P_空状态.BackColor = Color.FromArgb(16, 16, 16)
+        P_空状态.BackColor = Color.Transparent
+        P_空状态.BackColor1 = Color.FromArgb(40, 220, 220, 220)
+        P_空状态.BorderRadius = 10
+        P_空状态.BorderSize = 0
         P_空状态.Dock = DockStyle.Fill
         P_空状态.Visible = False
 
@@ -313,83 +239,75 @@ Public Class Form_v6_插件管理
             .BackColor = Color.Transparent,
             .ColumnCount = 1,
             .Dock = DockStyle.Fill,
-            .RowCount = 7
+            .RowCount = 6
         }
         emptyLayout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100.0F))
         emptyLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 45.0F))
-        emptyLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 62.0F))
-        emptyLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 36.0F))
-        emptyLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 48.0F))
+        emptyLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 44.0F))
         emptyLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 38.0F))
+        emptyLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 54.0F))
         emptyLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 44.0F))
         emptyLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 55.0F))
 
-        Dim icon As New Label With {
-            .Anchor = AnchorStyles.None,
-            .BackColor = Color.FromArgb(34, 42, 50),
-            .Font = New Font("Microsoft YaHei UI", 24.0F, FontStyle.Regular),
-            .ForeColor = Color.FromArgb(135, 190, 235),
-            .Size = New Size(56, 56),
-            .Text = "+",
-            .TextAlign = ContentAlignment.MiddleCenter
-        }
-        Dim emptyTitle = 创建文本标签("还没有安装插件", 13.0F, Color.FromArgb(225, 225, 225))
+        Dim emptyTitle = 创建文本标签("没有找到插件", 13.0F, Color.Silver)
         emptyTitle.TextAlign = ContentAlignment.MiddleCenter
-        Dim emptyDescription = 创建文本标签("把 *.3fui.dll 放入插件目录，然后重启应用即可加载。", 9.0F, Color.FromArgb(145, 190, 190, 190))
-        emptyDescription.TextAlign = ContentAlignment.TopCenter
-        Dim pathLabel = 创建文本标签(插件管理.插件文件夹路径, 8.5F, Color.FromArgb(115, 165, 175, 185))
+        Dim emptyDescription = 创建文本标签("将 *.3fui.dll 放入插件目录，刷新列表并重启应用。", 10.0F, Color.FromArgb(150, 255, 255, 255))
+        emptyDescription.TextAlign = ContentAlignment.MiddleCenter
+        Dim pathLabel = 创建文本标签(插件管理.插件文件夹路径, 9.0F, Color.FromArgb(110, 255, 255, 255))
         pathLabel.Padding = New Padding(24, 0, 24, 0)
         pathLabel.TextAlign = ContentAlignment.MiddleCenter
-        配置按钮(MB_空状态打开目录, "打开插件目录", 126, primary:=True)
+        配置按钮(MB_空状态打开目录, "打开插件目录", 130, Color.CornflowerBlue)
         MB_空状态打开目录.Anchor = AnchorStyles.None
         MB_空状态打开目录.Margin = New Padding(0)
 
-        emptyLayout.Controls.Add(icon, 0, 1)
-        emptyLayout.Controls.Add(emptyTitle, 0, 2)
-        emptyLayout.Controls.Add(emptyDescription, 0, 3)
-        emptyLayout.Controls.Add(pathLabel, 0, 4)
-        emptyLayout.Controls.Add(MB_空状态打开目录, 0, 5)
+        emptyLayout.Controls.Add(emptyTitle, 0, 1)
+        emptyLayout.Controls.Add(emptyDescription, 0, 2)
+        emptyLayout.Controls.Add(pathLabel, 0, 3)
+        emptyLayout.Controls.Add(MB_空状态打开目录, 0, 4)
         P_空状态.Controls.Add(emptyLayout)
     End Sub
 
     Private Function 创建详情布局() As Control
         Dim detailLayout As New TableLayoutPanel With {
+            .AutoSize = True,
+            .AutoSizeMode = AutoSizeMode.GrowAndShrink,
             .BackColor = Color.Transparent,
             .ColumnCount = 1,
-            .Dock = DockStyle.Fill,
+            .Dock = DockStyle.Top,
+            .Margin = New Padding(0),
             .RowCount = 9
         }
         detailLayout.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100.0F))
-        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 32.0F))
-        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 34.0F))
-        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 22.0F))
-        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 8.0F))
-        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 189.0F))
-        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 20.0F))
-        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 46.0F))
-        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 22.0F))
-        detailLayout.RowStyles.Add(New RowStyle(SizeType.Percent, 100.0F))
+        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 40.0F))
+        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 42.0F))
+        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 30.0F))
+        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 10.0F))
+        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 258.0F))
+        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 30.0F))
+        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 90.0F))
+        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 30.0F))
+        detailLayout.RowStyles.Add(New RowStyle(SizeType.Absolute, 110.0F))
 
         Dim detailHeader As New Panel With {.BackColor = Color.Transparent, .Dock = DockStyle.Fill}
-        Dim detailTitle = 创建文本标签("插件详情", 12.0F, Color.FromArgb(230, 230, 230))
+        Dim detailTitle = 创建文本标签("插件详情", 13.0F, Color.Silver)
         detailTitle.Dock = DockStyle.Fill
         L_详情状态.AutoEllipsis = True
-        L_详情状态.BackColor = Color.FromArgb(35, 35, 35)
+        L_详情状态.BackColor = Color.Transparent
         L_详情状态.Dock = DockStyle.Right
-        L_详情状态.Font = New Font("Microsoft YaHei UI", 8.5F)
-        L_详情状态.ForeColor = Color.FromArgb(170, 190, 205)
+        L_详情状态.Font = New Font("Microsoft YaHei UI", 9.0F)
+        L_详情状态.ForeColor = Color.FromArgb(150, 255, 255, 255)
         L_详情状态.Padding = New Padding(8, 0, 8, 0)
-        L_详情状态.Size = New Size(96, 32)
+        L_详情状态.Size = New Size(100, 40)
         L_详情状态.Text = "未选择"
         L_详情状态.TextAlign = ContentAlignment.MiddleCenter
         detailHeader.Controls.Add(detailTitle)
         detailHeader.Controls.Add(L_详情状态)
 
-        配置详情标签(L_详情名称, 12.0F, Color.FromArgb(225, 225, 225), FontStyle.Regular)
-        配置详情标签(L_详情文件, 8.5F, Color.FromArgb(125, 180, 180, 180), FontStyle.Regular)
+        配置详情标签(L_详情名称, 12.0F, Color.Silver, FontStyle.Regular)
+        配置详情标签(L_详情文件, 9.0F, Color.FromArgb(140, 255, 255, 255), FontStyle.Regular)
 
         Dim separator As New Panel With {
-            .BackColor = Color.FromArgb(42, 42, 42),
+            .BackColor = Color.FromArgb(80, 220, 220, 220),
             .Dock = DockStyle.Top,
             .Height = 1,
             .Margin = New Padding(0, 4, 0, 3)
@@ -401,10 +319,10 @@ Public Class Form_v6_插件管理
             .Dock = DockStyle.Fill,
             .RowCount = 7
         }
-        infoGrid.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 39.0F))
-        infoGrid.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 61.0F))
+        infoGrid.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 46.0F))
+        infoGrid.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 54.0F))
         For index = 0 To 6
-            infoGrid.RowStyles.Add(New RowStyle(SizeType.Absolute, 27.0F))
+            infoGrid.RowStyles.Add(New RowStyle(SizeType.Absolute, If(index = 1, 54.0F, 34.0F)))
         Next
         添加详情行(infoGrid, 0, "接口类型", L_详情接口)
         添加详情行(infoGrid, 1, "插件版本", L_详情插件版本)
@@ -414,14 +332,14 @@ Public Class Form_v6_插件管理
         添加详情行(infoGrid, 5, "Ext 插件 ID", L_详情插件ID)
         添加详情行(infoGrid, 6, "程序集版本", L_详情程序集)
 
-        Dim pathTitle = 创建文本标签("文件位置", 8.5F, Color.FromArgb(125, 180, 180, 180))
-        配置详情标签(L_详情路径, 8.5F, Color.FromArgb(190, 205, 215), FontStyle.Regular)
+        Dim pathTitle = 创建文本标签("文件位置", 9.0F, Color.FromArgb(140, 255, 255, 255))
+        配置详情标签(L_详情路径, 9.0F, Color.Silver, FontStyle.Regular)
         L_详情路径.TextAlign = ContentAlignment.TopLeft
 
-        配置详情标签(L_详情消息标题, 8.5F, Color.FromArgb(125, 180, 180, 180), FontStyle.Regular)
-        配置详情标签(L_详情消息, 8.5F, Color.FromArgb(165, 195, 205), FontStyle.Regular)
-        L_详情消息.Padding = New Padding(10, 7, 10, 7)
-        L_详情消息.BackColor = Color.FromArgb(24, 28, 32)
+        配置详情标签(L_详情消息标题, 9.0F, Color.FromArgb(140, 255, 255, 255), FontStyle.Regular)
+        配置详情标签(L_详情消息, 9.0F, Color.Silver, FontStyle.Regular)
+        L_详情消息.Padding = New Padding(12, 9, 12, 9)
+        L_详情消息.BackColor = Color.FromArgb(20, 220, 220, 220)
         L_详情消息.TextAlign = ContentAlignment.TopLeft
 
         detailLayout.Controls.Add(detailHeader, 0, 0)
@@ -447,8 +365,8 @@ Public Class Form_v6_插件管理
     End Sub
 
     Private Shared Sub 添加详情行(table As TableLayoutPanel, row As Integer, caption As String, valueLabel As Label)
-        Dim captionLabel = 创建文本标签(caption, 8.5F, Color.FromArgb(120, 175, 175, 175))
-        配置详情标签(valueLabel, 8.7F, Color.FromArgb(205, 205, 205), FontStyle.Regular)
+        Dim captionLabel = 创建文本标签(caption, 9.0F, Color.FromArgb(140, 255, 255, 255))
+        配置详情标签(valueLabel, 9.0F, Color.Silver, FontStyle.Regular)
         table.Controls.Add(captionLabel, 0, row)
         table.Controls.Add(valueLabel, 1, row)
     End Sub
@@ -523,13 +441,11 @@ Public Class Form_v6_插件管理
             If plugin.已启用 Then enabledCount += 1
             If plugin.等待重启 Then pendingCount += 1
         Next
-        L_插件统计.Text = $"{plugins.Count} 个插件"
-        L_启用统计.Text = $"{enabledCount} 个已启用"
-        L_待重启统计.Text = If(pendingCount = 0, "无需重启", $"{pendingCount} 项待重启")
-        L_待重启统计.ForeColor = If(
+        Dim restartText = If(
             pendingCount = 0,
-            Color.FromArgb(145, 185, 190),
-            Color.FromArgb(235, 180, 105))
+            "<span style=""color:DarkGray"">无需重启</span>",
+            $"<span style=""color:Goldenrod"">{pendingCount} 项待重启</span>")
+        HCL_概览.Text = $"<span style=""color:Silver"">{plugins.Count} 个插件</span>   <span style=""color:YellowGreen"">{enabledCount} 个已启用</span>   {restartText}"
     End Sub
 
     Private Function 创建列表项(plugin As 插件信息_v6, displayOrder As Integer) As UltraDetailListView.ListItem
@@ -540,7 +456,6 @@ Public Class Form_v6_插件管理
             New UltraDetailListView.ListSubItem(enabledText),
             New UltraDetailListView.ListSubItem(空值替代(plugin.显示名称)),
             New UltraDetailListView.ListSubItem(接口类型文本(plugin.接口类型)),
-            New UltraDetailListView.ListSubItem(空值替代(plugin.插件版本)),
             New UltraDetailListView.ListSubItem(空值替代(plugin.加载状态))
         ) With {.Tag = plugin.插件键}
     End Function
@@ -578,6 +493,7 @@ Public Class Form_v6_插件管理
         Dim plugin = 获取选中插件()
         If plugin Is Nothing Then
             MB_切换启用.Text = "启用插件"
+            MB_切换启用.ForeColor = Color.YellowGreen
             MB_切换启用.Enabled = False
             MB_上移.Enabled = False
             MB_下移.Enabled = False
@@ -605,6 +521,7 @@ Public Class Form_v6_插件管理
         End If
 
         MB_切换启用.Text = If(plugin.已启用, "停用插件", "启用插件")
+        MB_切换启用.ForeColor = If(plugin.已启用, Color.IndianRed, Color.YellowGreen)
         MB_切换启用.Enabled = True
         MB_上移.Enabled = UDLV_插件列表.SelectedIndex > 0
         MB_下移.Enabled = UDLV_插件列表.SelectedIndex >= 0 AndAlso UDLV_插件列表.SelectedIndex < UDLV_插件列表.Items.Count - 1
@@ -623,7 +540,7 @@ Public Class Form_v6_插件管理
         L_详情SDK.Text = If(usesExt, 空值替代(plugin.ExtSDK程序集版本), "不适用")
         L_详情API.Text = If(usesExt, 空值替代(plugin.ExtAPI最低版本), "不适用")
         L_详情插件ID.Text = If(plugin.Ext插件标识.Count = 0, "-", String.Join("、", plugin.Ext插件标识))
-        L_详情程序集.Text = $"{空值替代(plugin.程序集名称)} · {空值替代(plugin.程序集版本)}"
+        L_详情程序集.Text = 空值替代(plugin.程序集版本)
         L_详情路径.Text = 空值替代(plugin.文件路径)
 
         Dim errors As New List(Of String)
@@ -644,17 +561,17 @@ Public Class Form_v6_插件管理
         L_详情消息标题.Text = title
         L_详情消息.Text = message
         If isError Then
-            L_详情消息标题.ForeColor = Color.FromArgb(235, 125, 125)
-            L_详情消息.ForeColor = Color.FromArgb(235, 170, 170)
-            L_详情消息.BackColor = Color.FromArgb(43, 25, 27)
+            L_详情消息标题.ForeColor = Color.IndianRed
+            L_详情消息.ForeColor = Color.FromArgb(230, 195, 195)
+            L_详情消息.BackColor = Color.FromArgb(40, 205, 92, 92)
         ElseIf warning Then
-            L_详情消息标题.ForeColor = Color.FromArgb(235, 180, 105)
-            L_详情消息.ForeColor = Color.FromArgb(225, 200, 155)
-            L_详情消息.BackColor = Color.FromArgb(40, 34, 23)
+            L_详情消息标题.ForeColor = Color.Goldenrod
+            L_详情消息.ForeColor = Color.FromArgb(230, 220, 200)
+            L_详情消息.BackColor = Color.FromArgb(35, 218, 165, 32)
         Else
-            L_详情消息标题.ForeColor = Color.FromArgb(125, 180, 180, 180)
-            L_详情消息.ForeColor = Color.FromArgb(165, 195, 205)
-            L_详情消息.BackColor = Color.FromArgb(24, 28, 32)
+            L_详情消息标题.ForeColor = Color.FromArgb(140, 255, 255, 255)
+            L_详情消息.ForeColor = Color.Silver
+            L_详情消息.BackColor = Color.FromArgb(20, 220, 220, 220)
         End If
     End Sub
 
@@ -751,9 +668,9 @@ Public Class Form_v6_插件管理
     End Sub
 
     Private Sub 调整列宽()
-        If UDLV_插件列表.Columns.Count < 6 OrElse UDLV_插件列表.ClientSize.Width <= 0 Then Exit Sub
-        Dim fixedWidth = 54 + 72 + 100 + 110 + 132
-        Dim available = UDLV_插件列表.ClientSize.Width - UDLV_插件列表.Padding.Left - UDLV_插件列表.Padding.Right - 34
-        UDLV_插件列表.Columns(2).Width = Math.Max(150, available - fixedWidth)
+        If UDLV_插件列表.Columns.Count < 5 OrElse UDLV_插件列表.ClientSize.Width <= 0 Then Exit Sub
+        Dim fixedWidth = 70 + 80 + 115 + 180
+        Dim available = UDLV_插件列表.ClientSize.Width - UDLV_插件列表.Padding.Left - UDLV_插件列表.Padding.Right - 50
+        UDLV_插件列表.Columns(2).Width = Math.Max(160, available - fixedWidth)
     End Sub
 End Class
